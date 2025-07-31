@@ -31,7 +31,7 @@ class Config(object):
     ADMINS.append(OWNER_ID) if OWNER_ID not in ADMINS else []
 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "0"))
-    LIMIT = int(os.environ.get("LIMIT", "30"))
+    LIMIT = int(os.environ.get("LIMIT", "100"))
     UPDATE_CHANNEL = os.environ.get("UPDATE_CHANNEL", "iP_Update")
     BROADCAST_AS_COPY = is_enabled(
         (os.environ.get("BROADCAST_AS_COPY", "False")), False
