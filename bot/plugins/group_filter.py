@@ -43,18 +43,14 @@ async def smart_filter_handler(c: Client, m: t.Message):
                     await m.reply_text("❌ Shortener service mein koi problem hai. Please thodi der baad try karein.")
                     return
 
-                                # --- START: YAHAN PAR BUTTONS UPDATE KIYE GAYE HAIN ---
-                # Pehle sirf verification button banaya
                 btn = [
                     [t.InlineKeyboardButton("➡️ Verify Now ⬅️", url=shortened_link)]
                 ]
                 
-                # Agar "How To Verify" ka link config mein hai, to doosra button bhi add karo
-                if Config.RESULTS_HOW_TO_DOWNLOAD_LINK:
+                if Config.HOW_TO_VERIFY_LINK: # Note: This variable was changed from RESULTS_HOW_TO_DOWNLOAD_LINK
                     btn.append(
-                        [t.InlineKeyboardButton("❓ How To Verify ❓", url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK)]
+                        [t.InlineKeyboardButton("❓ How To Verify ❓", url=Config.HOW_TO_VERIFY_LINK)]
                     )
-                # --- END: YAHAN PAR BUTTONS UPDATE KIYE GAYE HAIN ---
 
                 await m.reply_text(
                     "**👋 Welcome!**\n\n"
@@ -65,7 +61,12 @@ async def smart_filter_handler(c: Client, m: t.Message):
                 return
 
         database_channels = Config.DATABASE_CHANNEL
+        # --- ADDED AUTO-DELETE LOGIC (Private) ---
+        auto_delete = Config.AUTO_DELETE
+        auto_delete_time = Config.AUTO_DELETE_TIME
+        # --- END ---
         if not database_channels: return
+
         sts = await m.reply("`Searching...`")
         results = await filter_chat(c, query, database_channels)
 
@@ -88,6 +89,11 @@ async def smart_filter_handler(c: Client, m: t.Message):
         formatted_text = soup.prettify()
         reply_url = await create_telegraph_post(query, formatted_text)
         await sts.edit(Script.RESULTS_MESSAGE.format(query=query.upper(), url=reply_url), disable_web_page_preview=1)
+        
+        # --- ADDED AUTO-DELETE LOGIC (Private) ---
+        if bool(auto_delete and auto_delete_time):
+            asyncio.create_task(auto_delete_func(sts, auto_delete_time))
+        # --- END ---
         return
 
     # =================================================================================
@@ -99,6 +105,10 @@ async def smart_filter_handler(c: Client, m: t.Message):
         is_premium = await is_premium_group(grp_id)
         
         database_channels = [group_info["index_channel"]] if group_info["index_channel"] and is_premium else Config.DATABASE_CHANNEL
+        # --- ADDED AUTO-DELETE LOGIC (Group) ---
+        auto_delete = group_info.get("auto_delete", Config.AUTO_DELETE)
+        auto_delete_time = group_info.get("auto_delete_time", Config.AUTO_DELETE_TIME)
+        # --- END ---
         
         if not database_channels: return
         sts = await m.reply("`Searching...`")
@@ -112,21 +122,22 @@ async def smart_filter_handler(c: Client, m: t.Message):
         bin_text = ""
         i = 1
         for result in results:
-            # Yahan hamesha direct bot link banega
             link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
             title = (result.text or result.caption).splitlines()[0]
             title = remove_mention(remove_link(title))
             bin_text += template.format(i=i, title=title, link=link, id=result.id)
             i += 1
         
-        # <--- YAHAN SE SHORTENER WALI LINE HATA DI GAYI HAI --->
-        # Ab group ke Telegraph page mein hamesha direct bot link honge.
-
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
         soup = BeautifulSoup(text, "html.parser")
         formatted_text = soup.prettify()
         reply_url = await create_telegraph_post(query, formatted_text)
         await sts.edit(Script.RESULTS_MESSAGE.format(query=query.upper(), url=reply_url), disable_web_page_preview=1)
+
+        # --- ADDED AUTO-DELETE LOGIC (Group) ---
+        if bool(auto_delete and auto_delete_time):
+            asyncio.create_task(auto_delete_func(sts, auto_delete_time))
+        # --- END ---
         return
 
 async def not_found_response(m, query):
