@@ -47,9 +47,9 @@ async def smart_filter_handler(c: Client, m: t.Message):
                     [t.InlineKeyboardButton("➡️ Verify Now ⬅️", url=shortened_link)]
                 ]
                 
-                if Config.HOW_TO_VERIFY_LINK: # Note: This variable was changed from RESULTS_HOW_TO_DOWNLOAD_LINK
+                if Config.FILE_HOW_TO_DOWNLOAD_LINK: # Note: This variable was changed from RESULTS_HOW_TO_DOWNLOAD_LINK
                     btn.append(
-                        [t.InlineKeyboardButton("❓ How To Verify ❓", url=Config.HOW_TO_VERIFY_LINK)]
+                        [t.InlineKeyboardButton("❓ How To Verify ❓", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)]
                     )
 
                 await m.reply_text(
