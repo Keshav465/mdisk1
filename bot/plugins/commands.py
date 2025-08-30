@@ -1,116 +1,36 @@
-from pyrogram import Client, filters, types, enums, StopPropagation
+from pyrogram import Client, filters, types, enums
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
-# <--- START: Utils Imports Update Kiye Hain --->
-from bot.utils import (
-    get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, 
-    is_bot_admin, is_int, is_premium_group, remove_link, remove_mention, short_link
-)
-# <--- END: Utils Imports Update Kiye Hain --->
-from bot.database import group_db, user_db
-from datetime import datetime, timedelta
+from bot.utils import get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention
+from bot.database import group_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 
 
-# <--- START: YEH NAYA START HANDLER HAI JO SAARE COMPLEX CASES HANDLE KAREGA --->
-# Iski priority group=0 hai, taaki yeh sabse pehle chale.
-@Client.on_message(filters.command("start") & filters.private, group=0)
-async def smart_start_handler(client: Client, message: types.Message):
-    if len(message.command) > 1:
-        payload = message.command[1]
-        user_id = message.from_user.id
-        
-        # Case 1: Jab user PM mein pre-verification complete karke aata hai
-        if payload == "verified_user":
-            try:
-                await user_db.update_user(user_id, {'last_shortener_time': datetime.now()})
-                # Aapka custom message
-                await message.reply_text("✅ **Verification Completed!**\n\nNow you can search and get files direct.")
-            except Exception as e:
-                await message.reply_text(f"❌ Verification error: {e}")
-            raise StopPropagation
-
-        # Case 2: Jab user GROUP se file lene ke liye aata hai
-        elif payload.startswith("file_"):
-            user_data = await user_db.get_user(user_id)
-            last_time = user_data.get('last_shortener_time', datetime(1970, 1, 1))
-
-            # Aapka custom time (12 ghante)
-            if datetime.now() - last_time > timedelta(hours=12):
-                shortener_api = Config.SHORTENER_API
-                shortener_site = Config.SHORTENER_SITE
-                if shortener_api and shortener_site:
-                    bot_username = (await client.get_me()).username
-                    verification_link = f"https://t.me/{bot_username}?start=verify_and_get_{payload}"
-                    shortened_link = await short_link(shortener_api, shortener_site, verification_link)
-                    
-                    # Aapke custom buttons
-                    btn = [
-                        [types.InlineKeyboardButton("➡️ Verify Now ⬅️", url=shortened_link)]
-                    ]
-                    
-                    # "How To Verify" button ke liye
-                    # Note: Yahan Config.HOW_TO_VERIFY_LINK use kiya hai, isko config mein add karna hoga
-                    if Config.RESULTS_HOW_TO_DOWNLOAD_LINK:
-                        btn.append(
-                            [types.InlineKeyboardButton("❓ How To Verify ❓", url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK)]
-                        )
-
-                    # Aapka custom verification message
-                    await message.reply_text(
-                        "**👋 Welcome!**\n\n"
-                        "ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ **Completed Verification** ᴛᴏᴅᴀʏ, "
-                        "ᴘʟᴇᴀꜱᴇ ᴄʟɪᴄᴋ ᴏɴ **Verify Now** & ɢᴇᴛ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴄᴇꜱꜱ ᴛɪʟʟ ɴᴇxᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
-                        reply_markup=types.InlineKeyboardMarkup(btn)
-                    )
-                    raise StopPropagation
-            
-            # Agar user pehle se verified hai, to control neeche chala jayega aur file mil jayegi.
-
-        # Case 3: Jab user GROUP wala verification complete karke file lene aata hai
-        elif payload.startswith("verify_and_get_file_"):
-            try:
-                await user_db.update_user(user_id, {'last_shortener_time': datetime.now()})
-                await message.reply_text("✅ Verification Completed!")
-            except Exception as e:
-                print(f"Error updating time for {user_id} after group verification: {e}")
-
-            actual_payload = payload.replace("verify_and_get_", "")
-            _, file_id, chat_id = actual_payload.split("_")
-            
-            try:
-                chnl_msg = await client.get_messages(int(chat_id), int(file_id))
-                caption = chnl_msg.caption
-                caption = remove_mention(remove_link(caption))
-                await chnl_msg.copy(user_id, caption=caption)
-            except Exception as e:
-                await message.reply_text(f"❌ File bhejte waqt error aa gaya: {e}")
-            raise StopPropagation
-
-# <--- END: NAYA START HANDLER --->
-
-
-# Purana start function ab normal welcome message aur file bhejne ka kaam karega
-@Client.on_message(filters.command("start") & (filters.private | filters.group) & filters.incoming, group=2)
+@Client.on_message(filters.command("start") & (filters.private | filters.group) & filters.incoming)
 async def start(c: Bot, m: types.Message):
     
-    # Jab user group se file lene aata hai (aur woh pehle se verified hai)
-    if len(m.command) > 1 and m.command[1].startswith("file_"):
-        _, file_id, chat_id = m.command[1].split("_")
+    if len(m.command) == 2:
+        if "help" in m.command:
+            s = Script.ADMIN_HELP_MESSAGE if m.from_user.id in Config.ADMINS else Script.USER_HELP_MESSAGE
+            await m.reply_text(
+                s, disable_web_page_preview=True
+            )
+            return
+        else:
+            _, file_id, chat_id = m.command[1].split("_")
 
-        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-        caption = chnl_msg.caption
-        caption = remove_mention(remove_link(caption))
-        btn = [[types.InlineKeyboardButton(
-            text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)]]
+            chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+            caption = chnl_msg.caption
+            caption = remove_mention(remove_link(caption))
+            btn = [[types.InlineKeyboardButton(
+                text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)]]
 
-        reply_markup = types.InlineKeyboardMarkup(
-            btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else None
-        await chnl_msg.copy(m.from_user.id, caption, reply_markup=reply_markup)
+            reply_markup = types.InlineKeyboardMarkup(
+                btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else None
+            await chnl_msg.copy(m.from_user.id, caption, reply_markup=reply_markup)
         return
-
-    # Normal /start command
+        
     markup = types.InlineKeyboardMarkup(
         [
             [
@@ -124,9 +44,6 @@ async def start(c: Bot, m: types.Message):
     await m.reply_text(
         Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup
     )
-
-
-# ... (Neeche ka baaki saara code bilkul same rahega) ...
 
 
 @Client.on_message(filters.command("help") & filters.private & filters.incoming)
@@ -176,7 +93,7 @@ async def index(c: Bot, m: types.Message):
 
         channel_info = await c.get_chat(index_channel)
 
-        if channel_info.type != enums.ChatType.CHANNEL:
+        if not channel_info.type.CHANNEL:
             await m.reply("This is not a channel")
             return
 
@@ -274,7 +191,8 @@ async def premium_groups(c: Client, m: types.Message):
             if await is_premium_group(group["group_id"]):
                 total_premium_groups += 1
                 tg_group = await c.get_chat(group["group_id"])
-                bin_text += f"~ `{group['group_id']}` {tg_group.invite_link}\n"
+                bin_text += "~ `{group_id}` {group_link}\n".format(
+                    group_id=group["group_id"], group_link=tg_group.invite_link)
         except Exception as e:
             print(e)
 
@@ -287,22 +205,22 @@ async def premium_groups(c: Client, m: types.Message):
 async def info(c: Client, m: types.Message):
     try:
         if (
-            m.chat.type == enums.ChatType.PRIVATE
+            m.chat.type == enums.chat_type.ChatType.PRIVATE
             and len(m.command) == 1
             and m.from_user.id in Config.ADMINS
         ):
             return await m.reply_text("`/info id`")
 
-        elif m.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        elif m.chat.type in [enums.chat_type.ChatType.GROUP, enums.chat_type.ChatType.SUPERGROUP]:
             if not await group_admin_check(client=c, message=m, userid=m.from_user.id):
                 return
 
         group_id = int(
-            m.command[1]) if m.from_user.id in Config.ADMINS and m.chat.type == enums.ChatType.PRIVATE else m.chat.id
+            m.command[1]) if m.from_user.id in Config.ADMINS and m.chat.type == enums.chat_type.ChatType.PRIVATE else m.chat.id
 
         btn = await get_group_info_button(group_id)
         text = await get_group_info_text(c, group_id)
-        await m.reply(text, reply_markup=types.InlineKeyboardMarkup(btn) if m.from_user.id in Config.ADMINS and m.chat.type == enums.ChatType.PRIVATE else None)
+        await m.reply(text, reply_markup=types.InlineKeyboardMarkup(btn) if m.from_user.id in Config.ADMINS and m.chat.type == enums.chat_type.ChatType.PRIVATE else None)
 
     except ChannelInvalid:
         await m.reply("Bot is not a admin of given group")
