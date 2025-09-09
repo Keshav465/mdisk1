@@ -1,4 +1,4 @@
-# START OF FILE: iPMxBT-main/bot/plugins/commands.py
+# FILE: bot/plugins/commands.py
 
 from pyrogram import Client, filters, types, enums
 import asyncio
@@ -22,37 +22,66 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
         
-        # === YAHAN PAR TERA FINAL SOLUTION HAI ===
-        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
-        # Yeh tere purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
+        # === PURANE LINKS AUR DIRECT FILE KE LIYE ===
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
-                if len(parts) >= 3: # >= 3 se purane aur naye dono link chalenge
+                if len(parts) >= 3:
                     _, file_id, chat_id = parts[0], parts[1], parts[2]
                     
-                    # Force subscribe check (optional, but good to have for new users)
                     if Config.UPDATE_CHANNEL:
                         try:
                             user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
                             if user.status == "kicked":
                                 return await m.reply("Sorry, you are banned!")
-                        except: # If user is not a member, continue and give the file anyway
+                        except:
                             pass
                     
                     chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                     caption = chnl_msg.caption or ""
                     clean_caption = remove_mention(remove_link(caption))
                     
-                    # File bhej de, bina koi sawal pooche
                     await chnl_msg.copy(m.from_user.id, caption=clean_caption)
                 else:
                     await m.reply("Sorry, this link is invalid.")
             except Exception as e:
                 await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
-            return # Yahan par function rok do, taaki neeche ka code na chale
+            return
 
-        # Normal premium khareedne wala link
+        # === YEH NAYA CODE HAI JO FREE USERS KE LINK KO HANDLE KAREGA ===
+        elif payload.startswith("adsget_"):
+            if not (Config.SHORTENER_API and Config.SHORTENER_SITE):
+                return await m.reply("Sorry, the admin has not configured the shortener service.")
+            try:
+                from bot.utils import short_link 
+                
+                parts = payload.replace("adsget_", "").split("_")
+                file_id, chat_id = parts[0], parts[1]
+                
+                bot_username = (await c.get_me()).username
+                
+                # Yeh final link hai jo user ko ad dekhne ke baad milega
+                final_destination_link = f"https://t.me/{bot_username}?start=file_{file_id}_{chat_id}"
+                
+                # Sirf is ek link ko short karenge
+                ad_link = await short_link(Config.SHORTENER_API, Config.SHORTENER_SITE, final_destination_link)
+                
+                if not ad_link or ad_link == final_destination_link:
+                    await m.reply("Sorry, could not generate the ad link. The shortener might be down. Please try again later.")
+                    return
+
+                btn = [[types.InlineKeyboardButton("✅ Unlock File ✅", url=ad_link)]]
+                await m.reply(
+                    "**Aapki file taiyaar hai!**\n\n"
+                    "Neeche diye gaye button par click karein aur ad page par kuch seconds intezaar karein, aapko file mil jayegi.",
+                    reply_markup=types.InlineKeyboardMarkup(btn)
+                )
+            except Exception as e:
+                await m.reply(f"Sorry, an error occurred while creating the ad link.\nError: {e}")
+            return
+        # === NAYA CODE YAHAN KHATAM HOTA HAI ===
+
+        # Premium khareedne wala link
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
@@ -60,7 +89,7 @@ async def start(c: Bot, m: types.Message):
                 [types.InlineKeyboardButton(f"{days} Days Plan @ ₹{price}", callback_data=f"subscribe_{days}")] 
                 for days, price in Config.SUBSCRIPTION_PLANS.items()
             ]
-            await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
+            await m.reply(text=welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
             return
 
         # Deep search link
@@ -70,9 +99,10 @@ async def start(c: Bot, m: types.Message):
                 padding = '=' * (-len(encoded_query) % 4)
                 query = base64.urlsafe_b64decode(encoded_query + padding).decode()
                 sts = await m.reply(f"`Searching for: {query}...`")
-                await perform_search(c, sts, query)
+                # Free users get links with ads by default from deep search
+                await perform_search(c, sts, query, use_shortener=True)
             except Exception as e:
-                await m.reply(f"Sorry, something is wrong with this search link.\nError: {e}")
+                await m.reply(f"Sorry, this search link is broken.\nError: {e}")
             return
 
     # Normal /start
