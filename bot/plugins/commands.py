@@ -11,7 +11,6 @@ from bot.database import group_db, user_db
 from bot.database.subscribers import sub_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
-from bot.plugins.search_logic import perform_search
 
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
@@ -21,88 +20,37 @@ async def start(c: Bot, m: types.Message):
     
     if len(m.command) > 1:
         payload = m.command[1]
-
-        # Case 1: Master Link (get_) - Direct File
-        if payload.startswith("get_"):
+        
+        # === YAHAN PAR AAPKA ASLI SOLUTION HAI ===
+        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
+        if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
                 if len(parts) == 3:
                     _, file_id, chat_id = parts
-                    if Config.UPDATE_CHANNEL:
-                       user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
-                       if user.status == "kicked": return await m.reply("Sorry, you are banned!")
-                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                    caption = chnl_msg.caption or ""
-                    clean_caption = remove_mention(remove_link(caption))
-                    sent_file_msg = await chnl_msg.copy(m.from_user.id, caption=clean_caption)
-                    asyncio.create_task(schedule_delete(sent_file_msg, 86400))
-                return
-            except Exception as e:
-                await m.reply(f"Sorry, this link is broken.\nError: {e}")
-                return
-
-        # Case 2: Normal User Link (file_) - Handles BOTH old and new links
-        elif payload.startswith("file_"):
-            user_id = m.from_user.id
-            is_subbed = await sub_db.is_subscribed(user_id)
-
-            if user_id in Config.ADMINS or is_subbed:
-                try:
-                    parts = payload.split("_")
-                    _, file_id, chat_id = parts[0], parts[1], parts[2]
-                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                    caption = chnl_msg.caption or ""
-                    clean_caption = remove_mention(remove_link(caption))
-                    sent_file_msg = await chnl_msg.copy(m.from_user.id, caption=clean_caption)
-                    asyncio.create_task(schedule_delete(sent_file_msg, 86400))
-                except Exception as e:
-                    await m.reply(f"Could not fetch the file. Error: {e}")
-                return
-            else:
-                # === YAHAN PAR PURANE LINKS KO SUPPORT KARNE KA LOGIC ADD KIYA GAYA HAI ===
-                try:
-                    parts = payload.split("_")
                     
-                    # Agar link NAYA hai (query ke saath) - len(parts) == 4
-                    if len(parts) == 4:
-                        encoded_query = parts[3]
-                        padding = '=' * (-len(encoded_query) % 4)
-                        original_query = base64.urlsafe_b64decode(encoded_query + padding).decode()
-                        buttons = [
-                            [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{original_query[:50]}")],
-                            [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
-                        ]
-                    # Agar link PURANA hai (bina query ke) - len(parts) == 3
-                    elif len(parts) == 3:
-                        file_details = payload.replace("file_", "")
-                        buttons = [
-                            [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_get_{file_details}")],
-                            [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
-                        ]
-                    else:
-                        return await m.reply("This link is invalid.")
-
-                    await m.reply(
-                        "**Hey Buddy!\nYou Are Using The Free Version 😊**\n\nTo get this file, please choose an option:",
-                        reply_markup=types.InlineKeyboardMarkup(buttons)
-                    )
-                except Exception as e:
-                    await m.reply(f"Sorry, this link seems broken.\nError: {e}")
-                return
-
-        # Case 3: Search Link (search_)
-        elif payload.startswith("search_"):
-            try:
-                encoded_query = payload.replace("search_", "", 1)
-                padding = '=' * (-len(encoded_query) % 4)
-                query = base64.urlsafe_b64decode(encoded_query + padding).decode()
-                sts = await m.reply(f"`Searching for: {query}...`")
-                await perform_search(c, sts, query)
+                    # Force subscribe check (optional, but good to have)
+                    if Config.UPDATE_CHANNEL:
+                        try:
+                            user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
+                            if user.status == "kicked":
+                                return await m.reply("Sorry, you are banned!")
+                        except: # If user is not member, continue
+                            pass
+                    
+                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                    caption = chnl_msg.caption or ""
+                    clean_caption = remove_mention(remove_link(caption))
+                    
+                    # File bhej do
+                    await chnl_msg.copy(m.from_user.id, caption=clean_caption)
+                else:
+                    await m.reply("Sorry, this link is invalid.")
             except Exception as e:
-                await m.reply(f"Sorry, something is wrong with this search link.\nError: {e}")
-            return
+                await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
+            return # Yahan par function rok do
 
-        # Baaki start payloads
+        # Normal premium khareedne wala link
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
