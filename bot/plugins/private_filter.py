@@ -8,6 +8,10 @@ async def private_search_handler(c: Client, m: t.Message):
     """
     Handles search queries in private messages. This is the main gatekeeper.
     """
+
+    if m.from_user and m.from_user.is_bot:
+    return
+    
     # Explicitly ignore any message that starts with "/" to be safe
     if m.text.startswith('/'):
         return
