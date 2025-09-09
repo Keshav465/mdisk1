@@ -5,7 +5,7 @@ from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
 from bot.utils import (
-    filter_chat, create_telegraph_post, short_link,
+    filter_chat, create_telegraph_post, short_from_text, 
     remove_link, remove_mention, schedule_delete
 )
 
@@ -41,24 +41,26 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # 1. Pehle simple link banayenge
-        final_link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+        # === SIRF AAPKA BATAYA HUA SIMPLE LINK BAN RAHA HAI ===
+        link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
         
-        # 2. Agar user FREE hai (use_shortener=True), to link ko chhota karenge
-        if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
-            final_link = await short_link(Config.SHORTENER_API, Config.SHORTENER_SITE, final_link)
-        
-        # 3. Final link ko use karenge
-        bin_text += template.format(i=i, title=title, link=final_link)
-        
+        bin_text += template.format(i=i, title=title, link=link)
         i += 1
 
     if not bin_text:
         no_results_msg = await not_found_response(sts, query)
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
-    
-    text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+
+    # Hamesha GPlinks use hoga agar API aur Site configured hai
+    # Yeh GPlinks ke loop ki problem solve karega
+    if Config.SHORTENER_API and Config.SHORTENER_SITE:
+        final_html = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+        shortened_html = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, final_html)
+        text = shortened_html
+    else:
+        text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+
     soup = BeautifulSoup(text, "html.parser")
     formatted_text = soup.prettify()
     reply_url = await create_telegraph_post(query, formatted_text)
