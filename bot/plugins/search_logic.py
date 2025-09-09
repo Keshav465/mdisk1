@@ -41,7 +41,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # === SIRF AAPKA BATAYA HUA SIMPLE LINK BAN RAHA HAI ===
+        # Sirf simple file link banega, GPlinks ka kaam neeche hoga
         link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
         
         bin_text += template.format(i=i, title=title, link=link)
@@ -52,12 +52,10 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # Hamesha GPlinks use hoga agar API aur Site configured hai
-    # Yeh GPlinks ke loop ki problem solve karega
+    # Hamesha GPlinks use hoga agar API configured hai. Naya function loop nahi banayega.
     if Config.SHORTENER_API and Config.SHORTENER_SITE:
-        final_html = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
-        shortened_html = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, final_html)
-        text = shortened_html
+        html_content = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+        text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, html_content)
     else:
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
 
@@ -74,17 +72,8 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
             ]
         )
 
-    final_results_msg = await sts.edit(
+    await sts.edit(
         Script.RESULTS_MESSAGE.format(query=query.upper(), url=reply_url),
         disable_web_page_preview=True,
         reply_markup=reply_markup
     )
-    if m.chat.type == enums.ChatType.PRIVATE:
-        asyncio.create_task(schedule_delete(final_results_msg, 300))
-
-async def not_found_response(m, query):
-    reply = query.replace(" ", "+")
-    reply_markup = t.InlineKeyboardMarkup(
-        [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
-    )
-    return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
