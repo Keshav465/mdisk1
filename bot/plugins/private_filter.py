@@ -1,3 +1,5 @@
+# START OF FILE: iPMxBT-main/bot/plugins/private_filter.py
+
 from pyrogram import Client, filters, types as t
 from bot.config import Config
 from bot.database.subscribers import sub_db
@@ -8,10 +10,13 @@ async def private_search_handler(c: Client, m: t.Message):
     """
     Handles search queries in private messages. This is the main gatekeeper.
     """
-
-    if m.from_user and m.from_user.is_bot:
-    return
     
+    # === YAHAN PAR BADLAV KIYA GAYA HAI ===
+    # Agar message kisi bot ne bheja hai (jaise Livegram), to use ignore kar do.
+    if m.from_user and m.from_user.is_bot:
+        return  # Yahan se function ruk jayega aur aage search nahi karega.
+    # ======================================
+
     # Explicitly ignore any message that starts with "/" to be safe
     if m.text.startswith('/'):
         return
@@ -34,8 +39,8 @@ async def private_search_handler(c: Client, m: t.Message):
     else:
         # Agar premium nahi hai, to choice do
         buttons = [
-            [t.InlineKeyboardButton("📺 Watch With Ads 📺", callback_data=f"ads_search_{query[:50]}")],
-            [t.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
+            [t.InlineKeyboardButton("📺 Watch with Ads", callback_data=f"ads_search_{query[:50]}")],
+            [t.InlineKeyboardButton("💎 Go Premium", callback_data="go_premium")]
         ]
         await m.reply(
             "**Hey Buddy!\nYou Are Using The Free Version 😊**\n\nSelect And Enjoy Your Choice 👇",
