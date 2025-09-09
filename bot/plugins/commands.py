@@ -22,9 +22,9 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
         
-        # === YAHAN PAR AAPKA FINAL SOLUTION HAI ===
+        # === YAHAN PAR TERA FINAL SOLUTION HAI ===
         # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
-        # Yeh aapke purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
+        # Yeh tere purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
@@ -44,7 +44,7 @@ async def start(c: Bot, m: types.Message):
                     caption = chnl_msg.caption or ""
                     clean_caption = remove_mention(remove_link(caption))
                     
-                    # File bhej do, bina koi sawal pooche
+                    # File bhej de, bina koi sawal pooche
                     await chnl_msg.copy(m.from_user.id, caption=clean_caption)
                 else:
                     await m.reply("Sorry, this link is invalid.")
