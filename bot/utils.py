@@ -1,3 +1,5 @@
+# START OF FILE: iPMxBT-main/bot/utils.py
+
 import asyncio
 import functools
 import re
@@ -8,12 +10,9 @@ from bot.config import Config, Script
 from bot.database import user_db, group_db
 from telegraph.aio import Telegraph
 from collections import OrderedDict
-from shortzy import Shortzy
-# === START: YAHAN PAR TYPO THEEK KIYA GAYA HAI ===
+import aiohttp  # <-- shortzy ki jagah iska istemal hoga
 from difflib import SequenceMatcher
-# === END: YAHAN PAR TYPO THEEK KIYA GAYA HAI ===
 from fuzzywuzzy import fuzz
-import aiohttp
 
 async def schedule_delete(message: types.Message, delay: int):
     """
@@ -232,17 +231,48 @@ async def auto_delete_func(m, auto_delete_time):
     await m.delete()
 
 
-async def short_link(api_key, base_site, link, from_text=None):
-    if bool(api_key and base_site):
-        shortzy = Shortzy(api_key, base_site)
-        return await shortzy.convert(link, silently_fail=True)
-    else:
+# === YAHAN BADA BADLAV KIYA GAYA HAI ===
+# shortzy library ko hata diya hai aur GPlinks se seedha baat karne ka code daala hai
+async def short_link(api_key, base_site, link):
+    if not api_key or not base_site:
+        return link
+    
+    # GPlinks ke liye API URL
+    api_url = f"https://{base_site}/api"
+    params = {'api': api_key, 'url': link}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, params=params) as response:
+                data = await response.json()
+                if data.get("status") == "success":
+                    return data.get("shortenedUrl", link)
+                else:
+                    print(f"GPlinks API Error: {data.get('message', 'Unknown error')}")
+                    return link
+    except Exception as e:
+        print(f"Error during link shortening: {e}")
         return link
 
 
 async def short_from_text(api_key, base_site, text):
-    if bool(api_key and base_site):
-        shortzy = Shortzy(api_key, base_site)
-        return await shortzy.convert_from_text(text, silently_fail=True)
-    else:
+    # Yeh function Telegraph page ke saare links ko ek saath chhota karega
+    if not api_key or not base_site:
         return text
+    
+    links = re.findall(r'href=[\'"]?([^\'" >]+)', text)
+    if not links:
+        return text
+
+    tasks = []
+    for link in links:
+        tasks.append(short_link(api_key, base_site, link))
+    
+    shortened_links = await asyncio.gather(*tasks)
+
+    for i, link in enumerate(links):
+        text = text.replace(link, shortened_links[i], 1)
+        
+    return text
+
+# END OF FILE: iPMxBT-main/bot/utils.py
