@@ -15,7 +15,7 @@ from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
     if m.forward_date:
-    return
+        return
     await user_db.get_user(m.from_user.id)
     
     if len(m.command) > 1:
@@ -81,7 +81,6 @@ async def start(c: Bot, m: types.Message):
             return
 
     # Normal /start
-    # === YAHAN BADLAV KIYA GAYA HAI ===
     markup = types.InlineKeyboardMarkup(
         [
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
