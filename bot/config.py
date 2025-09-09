@@ -80,7 +80,7 @@ class Config(object):
 
 class Script(object):
     # === YAHAN BADLAV KIYA GAYA HAI ===
-    START_MESSAGE = os.environ.get("START_MESSAGE", "**__Hey! I'm i Popcorn Movie Bot 🤖**\n**I can Find your Favourite Movies & Series.**\n\n**💡 Tips:** Tap on **Go Premium** Button for Ad-Free Experience and Direct Downloads!\n\nCheck: /status __")
+    START_MESSAGE = os.environ.get("START_MESSAGE", "**__Hey! I'm Your Search Robot 🤖**\n**I can Find your Favourite Movies & Series.**\n\n**💡 Tips:** Tap on **Go Premium** Button for Ad-Free Experience and Direct Downloads!\n\nCheck: /status __")
     
     # === START: YAHAN PAR HELP MESSAGES UPDATE KIYE GAYE HAIN ===
     
