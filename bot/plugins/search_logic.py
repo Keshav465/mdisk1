@@ -42,7 +42,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
         # Sirf simple file link banega, GPlinks ka kaam neeche hoga
-        link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+        link = f"https://t.me/{bot_username}?start=file_{result.id}_{result.chat.id}"
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
