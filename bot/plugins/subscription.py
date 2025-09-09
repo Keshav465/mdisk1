@@ -1,3 +1,5 @@
+# START OF FILE: iPMxBT-main/bot/plugins/subscription.py
+
 import random
 import re
 import asyncio
@@ -10,13 +12,14 @@ from bot.utils import schedule_delete, short_from_text, remove_link, remove_ment
 @Client.on_callback_query(filters.regex(r"^go_premium$"))
 async def go_premium_callback(c, cb: types.CallbackQuery):
     user_name = cb.from_user.first_name
-    welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
+    welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!__ 👇"
     PLAN_BUTTONS = [
         [types.InlineKeyboardButton(
             f"{days} Days Plan @ ₹{price}",
             callback_data=f"subscribe_{days}"
         )] for days, price in Config.SUBSCRIPTION_PLANS.items()
     ]
+    PLAN_BUTTONS.append([types.InlineKeyboardButton("⬅️ Back", callback_data="home")])
     await cb.message.edit(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
 
 @Client.on_callback_query(filters.regex(r"^subscribe_"))
@@ -37,12 +40,11 @@ async def subscribe_callback(c, cb: types.CallbackQuery):
 Please Pay Exact Amount: **`₹{unique_amount}`**
 Click The Button Below For Secure Payment.__
 """
-        await cb.message.edit(
-            text=message_text,
-            reply_markup=types.InlineKeyboardMarkup(
-                [[types.InlineKeyboardButton("💳 Pay Now 💳", url=payment_page_link)]]
-            )
-        )
+        PAYMENT_BUTTONS = [
+            [types.InlineKeyboardButton("💳 Pay Now", url=payment_page_link)],
+            [types.InlineKeyboardButton("⬅️ Back", callback_data="go_premium")]
+        ]
+        await cb.message.edit(text=message_text, reply_markup=types.InlineKeyboardMarkup(PAYMENT_BUTTONS))
     except Exception as e:
         print(f"Error in subscribe_callback: {e}")
         await cb.answer("An error occurred. Please try again.", show_alert=True)
@@ -59,13 +61,15 @@ async def ads_get_callback(c, cb: types.CallbackQuery):
     file_details = cb.data.replace("ads_get_", "")
     await cb.message.delete()
     try:
-        file_id, chat_id = file_details.split("_")
-        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-        caption = chnl_msg.caption or ""
-        clean_caption = remove_mention(remove_link(caption))
-        shortened_caption = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, clean_caption)
-        sent_file_msg = await chnl_msg.copy(cb.from_user.id, caption=shortened_caption)
-        asyncio.create_task(schedule_delete(sent_file_msg, 86400))
+        parts = file_details.split("_")
+        if len(parts) == 2:
+            file_id, chat_id = parts
+            chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+            caption = chnl_msg.caption or ""
+            clean_caption = remove_mention(remove_link(caption))
+            shortened_caption = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, clean_caption) if Config.SHORTENER_API else clean_caption
+            sent_file_msg = await chnl_msg.copy(cb.from_user.id, caption=shortened_caption)
+            asyncio.create_task(schedule_delete(sent_file_msg, 86400))
     except Exception as e:
         await c.send_message(cb.from_user.id, f"Sorry, an error occurred while sending the file: {e}")
 
