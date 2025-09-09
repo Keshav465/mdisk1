@@ -24,6 +24,7 @@ async def start(c: Bot, m: types.Message):
         
         # === YAHAN PAR AAPKA FINAL SOLUTION HAI ===
         # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
+        # Yeh aapke purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
