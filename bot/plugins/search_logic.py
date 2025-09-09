@@ -5,10 +5,11 @@ from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
 from bot.utils import (
-    filter_chat, create_telegraph_post, short_from_text, 
+    filter_chat, create_telegraph_post, 
     remove_link, remove_mention, schedule_delete
 )
 
+# === IS POORE FUNCTION KO REPLACE KAR DIJIYE ===
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
@@ -26,7 +27,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         return await sts.edit("An error occurred while searching.")
 
     if not results:
-        no_results_msg = await not_found_response(sts, query)
+        no_results_msg = await sts.edit(Script.NO_REPLY_TEXT.format(query))
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
@@ -41,23 +42,25 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # Sirf simple file link banega, GPlinks ka kaam neeche hoga
-        link = f"https://t.me/{bot_username}?start=file_{result.id}_{result.chat.id}"
+        # YAHAN PAR ASLI FIX HAI
+        if use_shortener:
+            # Free user ke liye, hum ek special 'adsget_' link banayenge jo bot ke paas wapas aayega.
+            # Yeh loop ko rokega.
+            link = f"https://t.me/{bot_username}?start=adsget_{result.id}_{result.chat.id}"
+        else:
+            # Premium user ke liye, direct file link.
+            link = f"https://t.me/{bot_username}?start=file_{result.id}_{result.chat.id}"
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
 
     if not bin_text:
-        no_results_msg = await not_found_response(sts, query)
+        no_results_msg = await sts.edit(Script.NO_REPLY_TEXT.format(query))
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # Hamesha GPlinks use hoga agar API configured hai. Naya function loop nahi banayega.
-    if Config.SHORTENER_API and Config.SHORTENER_SITE:
-        html_content = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
-        text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, html_content)
-    else:
-        text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+    # Hum Telegraph page ke content ko ab short nahi karenge. Loop yahin se ban raha tha.
+    text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
 
     soup = BeautifulSoup(text, "html.parser")
     formatted_text = soup.prettify()
