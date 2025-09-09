@@ -5,14 +5,11 @@ from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
 from bot.utils import (
-    filter_chat, create_telegraph_post, short_link, # <-- YAHAN BADLAV KIYA GAYA HAI
+    filter_chat, create_telegraph_post, short_link,
     remove_link, remove_mention, schedule_delete
 )
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
-    """
-    This is the main search function. It now creates simple, direct file links.
-    """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
         return await m.reply("Database channel not configured.")
@@ -44,17 +41,15 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # === YAHAN PAR AAPKA FINAL SOLUTION HAI ===
         # 1. Pehle simple link banayenge
         final_link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
         
-        # 2. Agar user FREE hai, to link ko chhota karenge
+        # 2. Agar user FREE hai (use_shortener=True), to link ko chhota karenge
         if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
             final_link = await short_link(Config.SHORTENER_API, Config.SHORTENER_SITE, final_link)
         
         # 3. Final link ko use karenge
         bin_text += template.format(i=i, title=title, link=final_link)
-        # ============================================
         
         i += 1
 
@@ -86,13 +81,8 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(final_results_msg, 300))
 
 async def not_found_response(m, query):
-    """
-    Handles the response when no results are found.
-    """
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
         [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
     )
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
-
-# END OF FILE: iPMxBT-main/bot/plugins/search_logic.py
