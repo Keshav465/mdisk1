@@ -14,6 +14,8 @@ from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
+    if m.forward_date:
+    return
     await user_db.get_user(m.from_user.id)
     
     if len(m.command) > 1:
