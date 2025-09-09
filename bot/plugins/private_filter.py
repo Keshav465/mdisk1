@@ -39,8 +39,8 @@ async def private_search_handler(c: Client, m: t.Message):
     else:
         # Agar premium nahi hai, to choice do
         buttons = [
-            [t.InlineKeyboardButton("📺 Watch with Ads", callback_data=f"ads_search_{query[:50]}")],
-            [t.InlineKeyboardButton("💎 Go Premium", callback_data="go_premium")]
+            [t.InlineKeyboardButton("📺 Download With Ads 📺", callback_data=f"ads_search_{query[:50]}")],
+            [t.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
         ]
         await m.reply(
             "**Hey Buddy!\nYou Are Using The Free Version 😊**\n\nSelect And Enjoy Your Choice 👇",
