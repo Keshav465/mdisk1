@@ -1,18 +1,15 @@
-# START OF FILE: bot/plugins/search_logic.py (FINAL VERSION WITH YOUR EXACT SCREENSHOT LOGIC)
+# START OF FILE: bot/plugins/search_logic.py (FINAL VERSION USING DIRECT API CALL)
 
 import asyncio
 from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
 from bot.utils import (
-    filter_chat, create_telegraph_post, short_from_text, 
-    remove_link, remove_mention, schedule_delete
+    filter_chat, create_telegraph_post, remove_link, 
+    remove_mention, schedule_delete, short_link # Naye function ko import kiya
 )
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
-    """
-    This function now replicates your old, working logic exactly to fix the GPlinks loop.
-    """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
         return await m.reply("Database channel not configured.")
@@ -36,39 +33,39 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a></aside><hr>"
     bin_text = ""
     i = 1
-    bot_username = (await c.get_me()).username.replace("@", "")
+    bot_username = (await c.get_me()).username
     
-    # === YEH AAPKE SCREENSHOT WALA EXACT CODE HAI ===
+    tasks = []
+    original_results = []
+
+    # Pehle saare valid links nikal lo
     for result in results:
-        result: t.Message
-
-        text_ = result.text or result.caption
-        if not text_:
-            continue
-
-        title = text_.splitlines()[0]
-        link = None # Link ko pehle None set karte hain
-
-        link_temp = f"https://telegram.dog/{bot_username}?start=file_"
-
-        # Yeh sirf un messages ka link banayega jinme asli file (document/video) hai
         if result.document or result.video:
-            clean_title = remove_mention(remove_link(title))
-            link = f"{link_temp}{result.id}_{result.chat.id}"
-            
-            # Result ko list mein tabhi add karo jab link bana ho
-            bin_text += template.format(i=i, title=clean_title, link=link)
-            i += 1
-    # =======================================================
+            original_results.append(result)
+
+    # Agar free user hai, to saare links ko ek saath short karne ke liye bhej do
+    if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
+        for result in original_results:
+            long_link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+            tasks.append(short_link(Config.SHORTENER_API, Config.SHORTENER_SITE, long_link))
+        
+        shortened_links = await asyncio.gather(*tasks)
+    else:
+        # Agar premium user hai, to lamba link hi use karo
+        shortened_links = [f"https://telegram.dog/{bot_username}?start=file_{res.id}_{res.chat.id}" for res in original_results]
+
+    # Ab final HTML banao
+    for idx, result in enumerate(original_results):
+        text_ = result.text or result.caption
+        title = remove_mention(remove_link(text_.splitlines()[0]))
+        final_link = shortened_links[idx]
+        bin_text += template.format(i=i, title=title, link=final_link)
+        i += 1
 
     if not bin_text:
         no_results_msg = await not_found_response(sts, query)
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
-
-    # Sirf FREE user ke liye GPlinks use hoga.
-    if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
-        bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
     
     text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
     soup = BeautifulSoup(text, "html.parser")
@@ -98,5 +95,3 @@ async def not_found_response(m, query):
         [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
     )
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
-
-# END OF FILE: bot/plugins/search_logic.py
