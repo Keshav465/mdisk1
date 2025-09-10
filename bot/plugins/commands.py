@@ -1,7 +1,8 @@
-# START OF FILE: bot/plugins/commands.py
+# START OF FILE: bot/plugins/commands.py (FINAL FIXED VERSION)
 
 from pyrogram import Client, filters, types, enums
 import asyncio
+import base64 
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
@@ -10,60 +11,83 @@ from bot.database import group_db, user_db
 from bot.database.subscribers import sub_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
+from bot.plugins.search_logic import perform_search
 
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
+    if m.forward_date:
+        return
     await user_db.get_user(m.from_user.id)
     
     if len(m.command) > 1:
         payload = m.command[1]
-
-        # === START: FINAL SOLUTION FOR BROADCAST LINKS ===
-        # Agar user link se aaya hai (group se ya broadcast se), to seedha file do.
-        # Isse double ads ki problem solve ho jayegi.
+        
+        # === YEH HAI FINAL BUG FIX ===
+        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
+        # Yeh GPlinks aur purane links, dono ke liye kaam karega.
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
+                # parts[0] is "file", parts[1] is file_id, parts[2] is chat_id
                 if len(parts) >= 3:
-                    _, file_id, chat_id = parts[0], parts[1], parts[2]
+                    file_id = parts[1]
+                    chat_id = parts[2]
                     
+                    # Force subscribe check (optional, but good to have for new users)
                     if Config.UPDATE_CHANNEL:
                         try:
                             user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
                             if user.status == "kicked":
                                 return await m.reply("Sorry, you are banned!")
-                        except: pass
+                        except: # If user is not a member, continue and give the file anyway
+                            pass
                     
                     chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                     caption = chnl_msg.caption or ""
                     clean_caption = remove_mention(remove_link(caption))
                     
+                    # File bhej de, bina koi sawal pooche
                     await chnl_msg.copy(m.from_user.id, caption=clean_caption)
                 else:
                     await m.reply("Sorry, this link is invalid.")
             except Exception as e:
-                await m.reply(f"Sorry, an error occurred. The link might be broken.\nError: {e}")
-            return
-        # === END: FINAL SOLUTION ===
-        
+                await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
+            return # Yahan par function rok do, taaki neeche ka code na chale
+        # === END OF FINAL BUG FIX ===
+
+        # Normal premium khareedne wala link
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
             PLAN_BUTTONS = [
-                [types.InlineKeyboardButton(f"{days} Days Plan @ ₹{price}", callback_data=f"subscribe_{days}")] for days, price in Config.SUBSCRIPTION_PLANS.items()
+                [types.InlineKeyboardButton(f"{days} Days Plan @ ₹{price}", callback_data=f"subscribe_{days}")] 
+                for days, price in Config.SUBSCRIPTION_PLANS.items()
             ]
             await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
             return
 
-    # Normal /start
-    markup = types.InlineKeyboardMarkup(
-        [[types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
-         [types.InlineKeyboardButton(text="Help", callback_data="help"),
-          types.InlineKeyboardButton(text="About", callback_data="about"),],
-         [types.InlineKeyboardButton(text="Close", callback_data="delete")],])
-    await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
+        # Deep search link
+        elif payload.startswith("search_"):
+            try:
+                encoded_query = payload.replace("search_", "", 1)
+                padding = '=' * (-len(encoded_query) % 4)
+                query = base64.urlsafe_b64decode(encoded_query + padding).decode()
+                sts = await m.reply(f"`Searching for: {query}...`")
+                await perform_search(c, sts, query)
+            except Exception as e:
+                await m.reply(f"Sorry, something is wrong with this search link.\nError: {e}")
+            return
 
-# ... Baaki saara code is file ka jaisa hai waisa hi rahega ...
+    # Normal /start
+    markup = types.InlineKeyboardMarkup([
+        [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
+        [
+            types.InlineKeyboardButton(text="Help", callback_data="help"),
+            types.InlineKeyboardButton(text="About", callback_data="about"),
+        ],
+        [types.InlineKeyboardButton(text="Close", callback_data="delete")],
+    ])
+    await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
 
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
@@ -174,7 +198,8 @@ async def request_cmd_handler(bot: Client, m):
     try:
         await bot.send_message(m.from_user.id, f"Contact {owner} to get access")
     except Exception as e:
-        btn = [[types.InlineKeyboardButton("Start", url=f"https://telegram.me/{bot_info.username}")]]
+        btn = [[types.InlineKeyboardButton(
+            "Start", url=f"https://telegram.me/{bot_info.username}")]]
         await m.reply("Start me in PM and try this command again", reply_markup=types.InlineKeyboardMarkup(btn))
         return
     await m.reply("Check Bot PM")
@@ -199,12 +224,17 @@ async def premium_groups(c: Client, m: types.Message):
 @Client.on_message(filters.command("info") & (filters.private | filters.group), group=2)
 async def info(c: Client, m: types.Message):
     try:
-        if (m.chat.type == enums.ChatType.PRIVATE and len(m.command) == 1 and m.from_user.id in Config.ADMINS):
+        if (
+            m.chat.type == enums.ChatType.PRIVATE
+            and len(m.command) == 1
+            and m.from_user.id in Config.ADMINS
+        ):
             return await m.reply_text("`/info id`")
         elif m.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
             if not await group_admin_check(client=c, message=m, userid=m.from_user.id):
                 return
-        group_id = int(m.command[1]) if m.from_user.id in Config.ADMINS and m.chat.type == enums.ChatType.PRIVATE else m.chat.id
+        group_id = int(
+            m.command[1]) if m.from_user.id in Config.ADMINS and m.chat.type == enums.ChatType.PRIVATE else m.chat.id
         btn = await get_group_info_button(group_id)
         text = await get_group_info_text(c, group_id)
         await m.reply(text, reply_markup=types.InlineKeyboardMarkup(btn) if m.from_user.id in Config.ADMINS and m.chat.type == enums.ChatType.PRIVATE else None)
@@ -232,7 +262,10 @@ async def api(client: Client, message):
     grp_id = message.chat.id
     sts = await message.reply("Checking...")
     group_info = await group_db.get_group(grp_id)
-    text = Script.API_COMMAND_TEXT.format(api=group_info["shortener_api"], shortener_site=group_info["shortener_site"])
+    text = Script.API_COMMAND_TEXT.format(
+        api=group_info["shortener_api"],
+        shortener_site=group_info["shortener_site"]
+    )
     await sts.edit(text)
 
 @Client.on_message(filters.command('remove_api') & filters.group, group=2)
@@ -263,12 +296,14 @@ async def admin_check_command(c: Client, m: types.Message):
         admins_list_from_config = Config.ADMINS
     except Exception as e:
         admins_list_from_config = f"Error loading: {e}"
-    debug_text = (f"--- 🛠️ Admin Configuration Check 🛠️ ---\n\n"
-                  f"👤 **Your User ID:** `{user_id}`\n"
-                  f"🔑 **OWNER_ID from config:** `{owner_id_from_config}`\n"
-                  f"📋 **ADMINS list from config:** `{admins_list_from_config}`\n\n"
-                  f"✅ **Status:** You are a verified admin.\n\n"
-                  f"----------------------------------------")
+    debug_text = (
+        f"--- 🛠️ Admin Configuration Check 🛠️ ---\n\n"
+        f"👤 **Your User ID:** `{user_id}`\n"
+        f"🔑 **OWNER_ID from config:** `{owner_id_from_config}`\n"
+        f"📋 **ADMINS list from config:** `{admins_list_from_config}`\n\n"
+        f"✅ **Status:** You are a verified admin.\n\n"
+        f"----------------------------------------"
+    )
     final_message = debug_text + Script.ADMIN_HELP_MESSAGE
     await m.reply_text(final_message)
 
@@ -313,3 +348,5 @@ __To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider 
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
         ])
         await m.reply_text(not_subscribed_message, reply_markup=markup)
+
+# END OF FILE: bot/plugins/commands.py
