@@ -2,7 +2,8 @@
 
 from pyrogram import Client, filters, types, enums
 import asyncio
-# import base64 # Ab iski zaroorat nahi hai
+import base64 
+import re # <-- Yeh import zaroori hai
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
@@ -19,8 +20,7 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
 
-        # === START: YAHAN PAR AAPKA SAHI LOGIC HAI ===
-        # Jab user file link se aaye...
+        # === START: YEH HAI AAPKA FINAL AUR CORRECT LOGIC ===
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
@@ -32,36 +32,44 @@ async def start(c: Bot, m: types.Message):
 
                     # 1. Agar user PREMIUM hai (ya ADMIN), to direct file do
                     if is_subbed or user_id in Config.ADMINS:
-                        if Config.UPDATE_CHANNEL:
-                            try:
-                                user = await c.get_chat_member(Config.UPDATE_CHANNEL, user_id)
-                                if user.status == "kicked":
-                                    return await m.reply("Sorry, you are banned!")
-                            except: pass
-                        
                         chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                         caption = chnl_msg.caption or ""
                         clean_caption = remove_mention(remove_link(caption))
                         await chnl_msg.copy(user_id, caption=clean_caption)
 
-                    # 2. Agar user FREE hai, to usko choice do
+                    # 2. Agar user FREE hai...
                     else:
+                        # ...to pehle file ka message get karo taaki hume movie ka naam mile
+                        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                        
+                        # File name ko hi query banayenge
+                        if chnl_msg.document:
+                            filename = chnl_msg.document.file_name
+                        elif chnl_msg.video:
+                            filename = chnl_msg.video.file_name
+                        else:
+                            # Agar file name nahi mila to caption se le lenge
+                            filename = (chnl_msg.caption or "Movie").splitlines()[0]
+
+                        # File name se extra cheezein hata do
+                        query = re.sub(r'(\.\w+$)|[\[\(].*?[\]\)]|@\w+|https?://\S+', '', filename).strip()
+
+                        # Ab "With Ads" wala button SEARCH trigger karega, file nahi dega
                         buttons = [
-                            # Yeh button user ko ads ke saath wahi file dega
-                            [types.InlineKeyboardButton("📺 Download With Ads 📺", callback_data=f"ads_get_{file_id}_{chat_id}")],
+                            [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{query[:50]}")],
                             [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
                         ]
                         await m.reply(
-                            "**Hey Buddy! You Are Using The Free Version 😊**\n\nTo get this file, please choose an option below 👇",
+                            "**Hey Buddy! You Are Using The Free Version 😊**\n\nTo get this file, please choose an option:",
                             reply_markup=types.InlineKeyboardMarkup(buttons)
                         )
                 else:
                     await m.reply("Sorry, this link is invalid.")
             except Exception as e:
-                await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
+                await m.reply(f"Sorry, an error occurred. The link might be broken.\nError: {e}")
             return
-        # === END: SAHI LOGIC KHATAM ===
-
+        # === END: FINAL LOGIC KHATAM ===
+        
         # Baaki start payloads
         elif payload == "subscribe":
             user_name = m.from_user.first_name
@@ -88,7 +96,7 @@ async def start(c: Bot, m: types.Message):
     )
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
 
-# === NEECHE KA BAAKI CODE WAISE HI RAKHEIN, USME KOI BADLAV NAHI HAI ===
+# === NEECHE KA BAAKI CODE WAISE HI RAKHEIN ===
 
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
@@ -329,7 +337,7 @@ async def my_status(c: Client, m: types.Message):
         expiry_date = subscription_details['expiry_date']
         time_remaining = expiry_date - datetime.now()
         
-        formatted_expiry = expiry_date.strftime("%d %B %Y at %I M %p")
+        formatted_expiry = expiry_date.strftime("%d %B %Y at %I:%M %p")
         formatted_remaining = human_time(time_remaining.total_seconds()) if time_remaining.total_seconds() > 0 else "Expired"
         
         status_message = f"""**💎 Your Premium Status 💎**
