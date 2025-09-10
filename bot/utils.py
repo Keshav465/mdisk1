@@ -1,19 +1,50 @@
+# START OF FILE: bot/utils.py (FINAL FIXED VERSION FOR GPLINKS API)
+
 import asyncio
 import functools
 import re
 import random
+import aiohttp
+import urllib.parse
 from pyrogram import enums, types, Client
 from bot import Bot
 from bot.config import Config, Script
 from bot.database import user_db, group_db
 from telegraph.aio import Telegraph
 from collections import OrderedDict
-from shortzy import Shortzy
-# === START: YAHAN PAR TYPO THEEK KIYA GAYA HAI ===
 from difflib import SequenceMatcher
-# === END: YAHAN PAR TYPO THEEK KIYA GAYA HAI ===
 from fuzzywuzzy import fuzz
-import aiohttp
+
+# === YEH NAYA AUR BEHTAR SHORTENER FUNCTION HAI ===
+async def short_link(api_key, base_site, long_link):
+    """
+    Shortens a single link using the GPlinks official API directly.
+    This is the most reliable method and fixes the loop issue.
+    """
+    # URL ko encode karna zaroori hai taaki special characters se problem na ho
+    encoded_link = urllib.parse.quote(long_link)
+    
+    # GPlinks ka official API format
+    api_url = f"https://{base_site}/api?api={api_key}&url={encoded_link}"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data.get("status") == "success":
+                        return data.get("shortenedUrl")
+                    else:
+                        print(f"GPlinks API Error: {data.get('message')}")
+                        return long_link # Error aane par original link wapas bhej do
+                else:
+                    print(f"GPlinks server returned status: {response.status}")
+                    return long_link # Error aane par original link wapas bhej do
+    except Exception as e:
+        print(f"Error during link shortening: {e}")
+        return long_link # Error aane par original link wapas bhej do
+# =======================================================
+
 
 async def schedule_delete(message: types.Message, delay: int):
     """
@@ -42,8 +73,6 @@ INTERVALS = OrderedDict([
 
 
 async def filter_chat(c: Bot, query, chat_id_list=Config.DATABASE_CHANNEL, offset=0, filter: enums.MessagesFilter = enums.MessagesFilter.EMPTY, num_results=Config.LIMIT):
-    search_results = []
-    raw_search_results = []
     query_list = query.split()
     results = []
 
@@ -224,25 +253,11 @@ async def get_group_admins(client: Client, group_id):
     return administrators
 
 
-async def auto_delete_func(m, auto_delete_time):
-    if m.document or m.video:
-        return
-        
+async def schedule_delete(m: types.Message, auto_delete_time):
     await asyncio.sleep(auto_delete_time)
-    await m.delete()
+    try:
+        await m.delete()
+    except Exception as e:
+        print(f"Error while deleting message {m.id}: {e}")
 
-
-async def short_link(api_key, base_site, link, from_text=None):
-    if bool(api_key and base_site):
-        shortzy = Shortzy(api_key, base_site)
-        return await shortzy.convert(link, silently_fail=True)
-    else:
-        return link
-
-
-async def short_from_text(api_key, base_site, text):
-    if bool(api_key and base_site):
-        shortzy = Shortzy(api_key, base_site)
-        return await shortzy.convert_from_text(text, silently_fail=True)
-    else:
-        return text
+# Purane shortener functions hata diye gaye hain
