@@ -1,3 +1,5 @@
+# START OF FILE: bot/plugins/forcesub.py (CRASH FIXED)
+
 import contextlib
 from pyrogram import Client, filters, types
 from pyrogram.errors import UserNotParticipant
@@ -17,11 +19,8 @@ async def forcesub_handler(c: Client, m: types.Message):
 
 
 async def force_sub_func(c, channel_id, m):
-    owner = c.owner
     if not channel_id:
         return True
-
-    txt = None
 
     invite_link = await c.create_chat_invite_link(channel_id)
     try:
@@ -36,8 +35,6 @@ async def force_sub_func(c, channel_id, m):
                 )
             ]
         ]
-
-
         return await m.reply_text(
             f"Hey {m.from_user.mention(style='md')} you need join My updates channel in order to use me 😉\n\n"
             "Press the Following Button to join Now 👇",
@@ -46,15 +43,22 @@ async def force_sub_func(c, channel_id, m):
         )
     except Exception as e:
         print(e)
+        # === YEH HAI CRASH KA FIX ===
+        # Hum owner ko on-the-fly fetch karenge
+        try:
+            owner = await c.get_users(Config.OWNER_ID)
+            owner_mention = owner.mention(style='md')
+        except:
+            owner_mention = f"the admin (`{Config.OWNER_ID}`)"
+        # ==========================
         return await m.reply_text(
-            f"Something Wrong. Please try again later or contact {owner.mention(style='md')}",
+            f"Something Wrong. Please try again later or contact {owner_mention}",
             quote=True,
         )
     return True
         
 @Client.on_callback_query(filters.regex("sub_refresh"))
 async def refresh_cb(c, m: types.CallbackQuery):
-    owner = c.owner
     if Config.UPDATE_CHANNEL:
         try:
             user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
@@ -67,14 +71,17 @@ async def refresh_cb(c, m: types.CallbackQuery):
                 "You have not yet joined our channel. First join and then press refresh button",
                 show_alert=True,
             )
-
             return
         except Exception as e:
             print(e)
+            try:
+                owner = await c.get_users(Config.OWNER_ID)
+                owner_mention = owner.mention(style='md')
+            except:
+                owner_mention = f"the admin (`{Config.OWNER_ID}`)"
             await m.message.edit(
-                f"Something Wrong. Please try again later or contact {owner.mention(style='md')}"
+                f"Something Wrong. Please try again later or contact {owner_mention}"
             )
-
             return
         
     await m.message.delete()
