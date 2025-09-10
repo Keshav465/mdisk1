@@ -1,7 +1,6 @@
 # START OF FILE: bot/plugins/search_logic.py
 
 import asyncio
-# import base64 # <-- Iski ab zaroorat nahi hai
 from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
@@ -11,11 +10,6 @@ from bot.utils import (
 )
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
-    """
-    This is the main search function.
-    - use_shortener=True for Free/Ads users
-    - use_shortener=False for Premium users
-    """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
         return await m.reply("Database channel not configured.")
@@ -41,18 +35,15 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     i = 1
     bot_username = (await c.get_me()).username
     
-    # Base64 wala code poori tarah se hata diya gaya hai.
-    
     for result in results:
         text_ = result.text or result.caption
         if not text_: continue
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # === LINK FORMAT SIMPLE KIYA GAYA HAI ===
-        # Ab link hamesha simple 'file_id_channel_id' format me hoga.
+        # === SIRF SIMPLE LINK BANEGA, BINA BASE64 ===
+        # Yeh link aap aaram se short karke broadcast kar sakte hain
         link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
-        # =======================================
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
@@ -62,7 +53,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # Shortener ka logic waisa hi hai, yeh 'use_shortener' ke aadhar par kaam karega
+    # Jab user PM me search karke "Go with Ads" dabata hai, tab yeh use hoga
     if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
         bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
     
@@ -74,26 +65,19 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     reply_markup = None
     if m.chat.type == enums.ChatType.PRIVATE and Config.RESULTS_HOW_TO_DOWNLOAD_LINK and Config.REQUEST_MOVIE_URL:
         reply_markup = t.InlineKeyboardMarkup(
-            [
-                [t.InlineKeyboardButton("How to Download?", url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK)],
-                [t.InlineKeyboardButton("Request Movie", url=Config.REQUEST_MOVIE_URL)]
-            ]
-        )
+            [[t.InlineKeyboardButton("How to Download?", url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK)],
+             [t.InlineKeyboardButton("Request Movie", url=Config.REQUEST_MOVIE_URL)]])
 
     final_results_msg = await sts.edit(
         Script.RESULTS_MESSAGE.format(query=query.upper(), url=reply_url),
         disable_web_page_preview=True,
         reply_markup=reply_markup
     )
-    # === Private chat me auto-delete hoga, group me nahi ===
     if m.chat.type == enums.ChatType.PRIVATE:
         asyncio.create_task(schedule_delete(final_results_msg, 300))
 
 async def not_found_response(m, query):
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
-        [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
-    )
+        [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]])
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
-
-# END OF FILE
