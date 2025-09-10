@@ -1,4 +1,4 @@
-# START OF FILE: bot/plugins/search_logic.py (FINAL VERSION WITH YOUR EXACT LOGIC)
+# START OF FILE: bot/plugins/search_logic.py (FINAL VERSION WITH YOUR EXACT LOGIC FROM SCREENSHOT)
 
 import asyncio
 from pyrogram import Client, types as t, enums
@@ -11,7 +11,7 @@ from bot.utils import (
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
     """
-    This is the main search function. It now uses your tested and working logic.
+    This is the main search function. It now uses your tested and working logic from group_filter.py.
     """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
@@ -48,7 +48,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         title = text_.splitlines()[0]
         link = None # Link ko pehle None set karte hain
 
-        # === YEH AAPKA PURANA AUR 100% SAHI LOGIC HAI ===
+        # === YEH AAPKA PURANA AUR 100% SAHI LOGIC HAI (SCREENSHOT WALA) ===
         # Yeh sirf un messages ka link banayega jinme asli file (document/video) hai
         if result.document or result.video:
             # Title ko saaf karo
@@ -59,7 +59,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
             # Result ko list mein add karo
             bin_text += template.format(i=i, title=clean_title, link=link)
             i += 1
-        # =================================================
+        # =================================================================
 
     if not bin_text:
         no_results_msg = await not_found_response(sts, query)
