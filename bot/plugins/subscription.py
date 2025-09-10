@@ -1,4 +1,4 @@
-# START OF FILE: iPMxBT-main/bot/plugins/subscription.py
+# START OF FILE: bot/plugins/subscription.py (FINAL FIXED VERSION)
 
 import random
 import re
@@ -7,7 +7,8 @@ from pyrogram import Client, filters, types
 from bot.config import Config
 from bot.database.subscribers import sub_db
 from .search_logic import perform_search
-from bot.utils import schedule_delete, short_from_text, remove_link, remove_mention
+# YAHAN SE 'short_from_text' HATA DIYA GAYA HAI
+from bot.utils import schedule_delete, remove_link, remove_mention
 
 @Client.on_callback_query(filters.regex(r"^go_premium$"))
 async def go_premium_callback(c, cb: types.CallbackQuery):
@@ -66,9 +67,9 @@ async def ads_get_callback(c, cb: types.CallbackQuery):
             file_id, chat_id = parts
             chnl_msg = await c.get_messages(int(chat_id), int(file_id))
             caption = chnl_msg.caption or ""
+            # YAHAN SE SHORTENER WALA CODE HATA DIYA GAYA HAI
             clean_caption = remove_mention(remove_link(caption))
-            shortened_caption = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, clean_caption) if Config.SHORTENER_API else clean_caption
-            sent_file_msg = await chnl_msg.copy(cb.from_user.id, caption=shortened_caption)
+            sent_file_msg = await chnl_msg.copy(cb.from_user.id, caption=clean_caption)
             asyncio.create_task(schedule_delete(sent_file_msg, 86400))
     except Exception as e:
         await c.send_message(cb.from_user.id, f"Sorry, an error occurred while sending the file: {e}")
