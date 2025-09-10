@@ -19,37 +19,53 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
 
-        # Case 1: User file lene ke liye group se aaya hai
         if payload.startswith("file_"):
-            user_id = m.from_user.id
-            is_subbed = await sub_db.is_subscribed(user_id)
-
-            # Agar user ADMIN hai ya PREMIUM SUBSCRIBER hai, to direct file do
-            if user_id in Config.ADMINS or is_subbed:
+            parts = payload.split("_")
+            
+            # === START: PURANE LINKS KE LIYE SOLUTION (DIRECT FILE) ===
+            # Agar link purana hai (format: file_id_chatid), to direct file do.
+            if len(parts) == 3:
                 try:
-                    parts = payload.split("_")
-                    if len(parts) >= 3:
-                        _, file_id, chat_id = parts[0], parts[1], parts[2]
+                    _, file_id, chat_id = parts[0], parts[1], parts[2]
+                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                    caption = chnl_msg.caption or ""
+                    clean_caption = remove_mention(remove_link(caption))
+                    sent_file_msg = await chnl_msg.copy(m.from_user.id, caption=clean_caption)
+                    asyncio.create_task(schedule_delete(sent_file_msg, 86400))
+                    return
+                except Exception as e:
+                    await m.reply(f"Could not fetch the file from this link. Error: {e}")
+                    return
+            # === END: PURANE LINKS KE LIYE SOLUTION ===
+
+            # === NAYE LINKS KA LOGIC (Pehle Jaisa) ===
+            # Agar link naya hai (format: file_id_chatid_query), to premium/free check karo.
+            elif len(parts) == 4:
+                user_id = m.from_user.id
+                is_subbed = await sub_db.is_subscribed(user_id)
+
+                # Agar user ADMIN hai ya PREMIUM SUBSCRIBER hai, to direct file do
+                if user_id in Config.ADMINS or is_subbed:
+                    try:
+                        _, file_id, chat_id, _ = parts # query ko ignore karo
                         chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                         caption = chnl_msg.caption or ""
                         clean_caption = remove_mention(remove_link(caption))
                         sent_file_msg = await chnl_msg.copy(m.from_user.id, caption=clean_caption)
                         asyncio.create_task(schedule_delete(sent_file_msg, 86400))
-                    else:
-                        await m.reply("Sorry, this seems to be a broken file link.")
-                    return
-                except Exception as e:
-                    await m.reply(f"Could not fetch the file. Error: {e}")
-                    return
-            else:
-                # Agar user FREE hai, to usko original query se search karne ka option do
-                try:
-                    parts = payload.split("_")
-                    if len(parts) == 4:
+                        return
+                    except Exception as e:
+                        await m.reply(f"Could not fetch the file. Error: {e}")
+                        return
+                else:
+                    # Agar user FREE hai, to usko original query se search karne ka option do
+                    try:
                         encoded_query = parts[3]
                         padding = '=' * (-len(encoded_query) % 4)
                         original_query = base64.urlsafe_b64decode(encoded_query + padding).decode()
                         
+                        # NOTE: Agar aapko 'Get File With Ads' button se direct file deni hai, to callback banana padega
+                        # Filhal yeh code user ko ads ke sath search karne ka option dega.
                         buttons = [
                             [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{original_query[:50]}")],
                             [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
@@ -58,11 +74,14 @@ async def start(c: Bot, m: types.Message):
                             "**Hey Buddy!\nYou Are Using The Free Version 😊**\n\nTo get this file, please choose an option:",
                             reply_markup=types.InlineKeyboardMarkup(buttons)
                         )
-                    else:
-                        await m.reply("This is an old or invalid link. Please go back to the group and search again.")
-
-                except Exception as e:
-                    await m.reply(f"Sorry, this link seems broken. Please search again in the group or here!.\nError: {e}")
+                        return
+                    except Exception as e:
+                        await m.reply(f"Sorry, this link seems broken. Please search again in the group or here!.\nError: {e}")
+                        return
+            
+            # Agar link na purana hai na naya, to error do
+            else:
+                await m.reply("Sorry, this seems to be a broken or invalid link.")
                 return
         
         # Baaki start payloads
@@ -79,7 +98,6 @@ async def start(c: Bot, m: types.Message):
             return
 
     # Normal /start
-    # === YAHAN BADLAV KIYA GAYA HAI ===
     markup = types.InlineKeyboardMarkup(
         [
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
@@ -91,6 +109,14 @@ async def start(c: Bot, m: types.Message):
         ]
     )
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
+
+# Yahan par aapka baki ka code (help_command, about, id, etc.) same rahega
+# Isliye main use yahan dobara paste nahi kar raha hoon. 
+# Aapko sirf start() function ko upar diye gaye code se replace karna hai.
+
+# ... (baaki saare functions jaise help, about, id, index, etc. yahan rahenge)
+# ... (Niche tak poora file same rahega)
+
 
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
