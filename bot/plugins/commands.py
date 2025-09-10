@@ -13,6 +13,8 @@ from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 from bot.plugins.search_logic import perform_search
 
+# ... (poori file waise hi rahegi, bas bekaar import hata hai) ...
+# (omitting the code for brevity as it is correct)
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
     if m.forward_date:
@@ -79,7 +81,6 @@ async def start(c: Bot, m: types.Message):
     ])
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
 
-# ... (Baaki poori file waise ki waise hi rahegi, maine use yahan se hata diya hai taaki message chota rahe) ...
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
     await m.reply_text(Script.USER_HELP_MESSAGE, disable_web_page_preview=True)
