@@ -1,4 +1,4 @@
-# START OF FILE: iPMxBT-main/bot/plugins/commands.py
+# START OF FILE: bot/plugins/commands.py (FINAL FIXED VERSION WITH IMPORT ERROR FIXED)
 
 from pyrogram import Client, filters, types, enums
 import asyncio
@@ -6,7 +6,8 @@ import base64
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
-from bot.utils import get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention, schedule_delete, short_from_text, human_time
+# YAHAN SE 'short_from_text' HATA DIYA GAYA HAI
+from bot.utils import get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention, schedule_delete, human_time
 from bot.database import group_db, user_db
 from bot.database.subscribers import sub_db
 from bot import Bot
@@ -22,37 +23,34 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
         
-        # === YAHAN PAR TERA FINAL SOLUTION HAI ===
-        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
-        # Yeh tere purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
+        # === YEH HAI FINAL BUG FIX ===
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
-                if len(parts) >= 3: # >= 3 se purane aur naye dono link chalenge
-                    _, file_id, chat_id = parts[0], parts[1], parts[2]
+                if len(parts) >= 3:
+                    file_id = parts[1]
+                    chat_id = parts[2]
                     
-                    # Force subscribe check (optional, but good to have for new users)
                     if Config.UPDATE_CHANNEL:
                         try:
                             user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
                             if user.status == "kicked":
                                 return await m.reply("Sorry, you are banned!")
-                        except: # If user is not a member, continue and give the file anyway
+                        except:
                             pass
                     
                     chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                     caption = chnl_msg.caption or ""
                     clean_caption = remove_mention(remove_link(caption))
                     
-                    # File bhej de, bina koi sawal pooche
                     await chnl_msg.copy(m.from_user.id, caption=clean_caption)
                 else:
                     await m.reply("Sorry, this link is invalid.")
             except Exception as e:
                 await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
-            return # Yahan par function rok do, taaki neeche ka code na chale
+            return
+        # === END OF FINAL BUG FIX ===
 
-        # Normal premium khareedne wala link
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
@@ -63,7 +61,6 @@ async def start(c: Bot, m: types.Message):
             await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
             return
 
-        # Deep search link
         elif payload.startswith("search_"):
             try:
                 encoded_query = payload.replace("search_", "", 1)
@@ -75,7 +72,6 @@ async def start(c: Bot, m: types.Message):
                 await m.reply(f"Sorry, something is wrong with this search link.\nError: {e}")
             return
 
-    # Normal /start
     markup = types.InlineKeyboardMarkup([
         [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
         [
