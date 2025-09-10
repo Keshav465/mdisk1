@@ -1,6 +1,7 @@
 # START OF FILE: iPMxBT-main/bot/plugins/search_logic.py
 
 import asyncio
+import base64  # <-- Naya import
 from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
@@ -9,9 +10,13 @@ from bot.utils import (
     remove_link, remove_mention, schedule_delete
 )
 
+# === START: YAHAN PAR FUNCTION KI DEFINITION THEEK KI GAYI HAI ===
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
+# === END: YAHAN PAR FUNCTION KI DEFINITION THEEK KI GAYI HAI ===
     """
-    This is the main search function. It now creates simple, direct file links.
+    This is the main search function.
+    - use_shortener=True for Free/Ads users
+    - use_shortener=False for Premium users
     """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
@@ -38,14 +43,26 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     i = 1
     bot_username = (await c.get_me()).username
     
+    # === YAHAN BADA BADLAV KIYA GAYA HAI ===
+    # User ki original query ko encode karke link me add karenge
+    try:
+        # Base64 encoding for safe URL transport
+        encoded_query = base64.urlsafe_b64encode(query.encode()).decode().rstrip('=')
+    except Exception:
+        # Fallback if encoding fails
+        encoded_query = ""
+    # ======================================
+
     for result in results:
         text_ = result.text or result.caption
         if not text_: continue
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # Simple file link banega
-        link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+        # === LINK FORMAT ME BADLAV ===
+        # Ab link me file_id, chat_id, aur encoded_query teeno honge
+        link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}_{encoded_query}"
+        # =============================
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
@@ -55,12 +72,12 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # === YAHAN PAR AAPKA ASLI SOLUTION HAI ===
-    # Ab yeh check karega ki user premium hai ya nahi.
-    # Sirf FREE user ke liye GPlinks use hoga.
+    # === START: YAHAN PAR SHORTENER KA LOGIC THEEK KIYA GAYA HAI ===
+    # Ab yeh 'use_shortener' variable ko check karke hi ads lagayega
     if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
+        # Yeh Telegraph page ke andar waale links ko short karega
         bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
-    # ============================================
+    # === END: YAHAN PAR SHORTENER KA LOGIC THEEK KIYA GAYA HAI ===
     
     text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
     soup = BeautifulSoup(text, "html.parser")
@@ -81,17 +98,11 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         disable_web_page_preview=True,
         reply_markup=reply_markup
     )
-    if m.chat.type == enums.ChatType.PRIVATE:
-        asyncio.create_task(schedule_delete(final_results_msg, 300))
+    asyncio.create_task(schedule_delete(final_results_msg, 300))
 
 async def not_found_response(m, query):
-    """
-    Handles the response when no results are found.
-    """
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
         [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
     )
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
-
-# END OF FILE: iPMxBT-main/bot/plugins/search_logic.py
