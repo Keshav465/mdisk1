@@ -1,7 +1,9 @@
 from pyrogram import Client, filters, types as t
 from .search_logic import perform_search
 
-@Client.on_message(filters.text & filters.group, group=3)
+# === YAHAN BADLAV KIYA GAYA HAI ===
+# Ab yeh function sirf un messages par chalega jo forward nahi kiye gaye hain.
+@Client.on_message(filters.text & filters.group & ~filters.forwarded, group=3)
 async def group_search_handler(c: Client, m: t.Message):
     """
     Handles search queries in group chats.
