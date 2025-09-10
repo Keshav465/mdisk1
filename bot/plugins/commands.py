@@ -11,7 +11,6 @@ from bot.database import group_db, user_db
 from bot.database.subscribers import sub_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
-from bot.plugins.search_logic import perform_search
 
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
@@ -21,69 +20,77 @@ async def start(c: Bot, m: types.Message):
     
     if len(m.command) > 1:
         payload = m.command[1]
-        
-        # === YAHAN PAR TERA FINAL SOLUTION HAI ===
-        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
-        # Yeh tere purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
-        if payload.startswith("file_"):
-            try:
-                parts = payload.split("_")
-                if len(parts) >= 3: # >= 3 se purane aur naye dono link chalenge
-                    _, file_id, chat_id = parts[0], parts[1], parts[2]
-                    
-                    # Force subscribe check (optional, but good to have for new users)
-                    if Config.UPDATE_CHANNEL:
-                        try:
-                            user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
-                            if user.status == "kicked":
-                                return await m.reply("Sorry, you are banned!")
-                        except: # If user is not a member, continue and give the file anyway
-                            pass
-                    
-                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                    caption = chnl_msg.caption or ""
-                    clean_caption = remove_mention(remove_link(caption))
-                    
-                    # File bhej de, bina koi sawal pooche
-                    await chnl_msg.copy(m.from_user.id, caption=clean_caption)
-                else:
-                    await m.reply("Sorry, this link is invalid.")
-            except Exception as e:
-                await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
-            return # Yahan par function rok do, taaki neeche ka code na chale
 
-        # Normal premium khareedne wala link
+        # Case 1: User file lene ke liye group se aaya hai
+        if payload.startswith("file_"):
+            user_id = m.from_user.id
+            is_subbed = await sub_db.is_subscribed(user_id)
+
+            # Agar user ADMIN hai ya PREMIUM SUBSCRIBER hai, to direct file do
+            if user_id in Config.ADMINS or is_subbed:
+                try:
+                    parts = payload.split("_")
+                    if len(parts) >= 3:
+                        _, file_id, chat_id = parts[0], parts[1], parts[2]
+                        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                        caption = chnl_msg.caption or ""
+                        clean_caption = remove_mention(remove_link(caption))
+                        sent_file_msg = await chnl_msg.copy(m.from_user.id, caption=clean_caption)
+                        asyncio.create_task(schedule_delete(sent_file_msg, 86400))
+                    else:
+                        await m.reply("Sorry, this seems to be a broken file link.")
+                    return
+                except Exception as e:
+                    await m.reply(f"Could not fetch the file. Error: {e}")
+                    return
+            else:
+                # Agar user FREE hai, to usko original query se search karne ka option do
+                try:
+                    parts = payload.split("_")
+                    if len(parts) == 4:
+                        encoded_query = parts[3]
+                        padding = '=' * (-len(encoded_query) % 4)
+                        original_query = base64.urlsafe_b64decode(encoded_query + padding).decode()
+                        
+                        buttons = [
+                            [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{original_query[:50]}")],
+                            [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
+                        ]
+                        await m.reply(
+                            "**Hey Buddy!\nYou Are Using The Free Version 😊**\n\nTo get this file, please choose an option:",
+                            reply_markup=types.InlineKeyboardMarkup(buttons)
+                        )
+                    else:
+                        await m.reply("This is an old or invalid link. Please go back to the group and search again.")
+
+                except Exception as e:
+                    await m.reply(f"Sorry, this link seems broken. Please search again in the group or here!.\nError: {e}")
+                return
+        
+        # Baaki start payloads
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
             PLAN_BUTTONS = [
-                [types.InlineKeyboardButton(f"{days} Days Plan @ ₹{price}", callback_data=f"subscribe_{days}")] 
-                for days, price in Config.SUBSCRIPTION_PLANS.items()
+                [types.InlineKeyboardButton(
+                    f"{days} Days Plan @ ₹{price}",
+                    callback_data=f"subscribe_{days}"
+                )] for days, price in Config.SUBSCRIPTION_PLANS.items()
             ]
             await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
             return
 
-        # Deep search link
-        elif payload.startswith("search_"):
-            try:
-                encoded_query = payload.replace("search_", "", 1)
-                padding = '=' * (-len(encoded_query) % 4)
-                query = base64.urlsafe_b64decode(encoded_query + padding).decode()
-                sts = await m.reply(f"`Searching for: {query}...`")
-                await perform_search(c, sts, query)
-            except Exception as e:
-                await m.reply(f"Sorry, something is wrong with this search link.\nError: {e}")
-            return
-
     # Normal /start
-    markup = types.InlineKeyboardMarkup([
-        [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
+    markup = types.InlineKeyboardMarkup(
         [
-            types.InlineKeyboardButton(text="Help", callback_data="help"),
-            types.InlineKeyboardButton(text="About", callback_data="about"),
-        ],
-        [types.InlineKeyboardButton(text="Close", callback_data="delete")],
-    ])
+            [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
+            [
+                types.InlineKeyboardButton(text="Help", callback_data="help"),
+                types.InlineKeyboardButton(text="About", callback_data="about"),
+            ],
+            [types.InlineKeyboardButton(text="Close", callback_data="delete")],
+        ]
+    )
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
 
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
