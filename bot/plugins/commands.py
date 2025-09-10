@@ -1,8 +1,8 @@
-# START OF FILE: iPMxBT-main/bot/plugins/commands.py
+# START OF FILE: bot/plugins/commands.py
 
 from pyrogram import Client, filters, types, enums
 import asyncio
-import base64 
+# import base64 # <-- Iski ab zaroorat nahi hai
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
@@ -19,53 +19,39 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
 
-        # Case 1: User file lene ke liye group se aaya hai
+        # === START: YAHAN PAR AAPKA FINAL SOLUTION HAI ===
+        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI.
+        # Yeh sabhi users ke liye kaam karega, chahe free ho ya premium.
         if payload.startswith("file_"):
-            user_id = m.from_user.id
-            is_subbed = await sub_db.is_subscribed(user_id)
-
-            # Agar user ADMIN hai ya PREMIUM SUBSCRIBER hai, to direct file do
-            if user_id in Config.ADMINS or is_subbed:
-                try:
-                    parts = payload.split("_")
-                    if len(parts) >= 3:
-                        _, file_id, chat_id = parts[0], parts[1], parts[2]
-                        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                        caption = chnl_msg.caption or ""
-                        clean_caption = remove_mention(remove_link(caption))
-                        sent_file_msg = await chnl_msg.copy(m.from_user.id, caption=clean_caption)
-                        asyncio.create_task(schedule_delete(sent_file_msg, 86400))
-                    else:
-                        await m.reply("Sorry, this seems to be a broken file link.")
-                    return
-                except Exception as e:
-                    await m.reply(f"Could not fetch the file. Error: {e}")
-                    return
-            else:
-                # Agar user FREE hai, to usko original query se search karne ka option do
-                try:
-                    parts = payload.split("_")
-                    if len(parts) == 4:
-                        encoded_query = parts[3]
-                        padding = '=' * (-len(encoded_query) % 4)
-                        original_query = base64.urlsafe_b64decode(encoded_query + padding).decode()
-                        
-                        buttons = [
-                            [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{original_query[:50]}")],
-                            [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
-                        ]
-                        await m.reply(
-                            "**Hey Buddy!\nYou Are Using The Free Version 😊**\n\nTo get this file, please choose an option:",
-                            reply_markup=types.InlineKeyboardMarkup(buttons)
-                        )
-                    else:
-                        await m.reply("This is an old or invalid link. Please go back to the group and search again.")
-
-                except Exception as e:
-                    await m.reply(f"Sorry, this link seems broken. Please search again in the group or here!.\nError: {e}")
-                return
+            try:
+                parts = payload.split("_")
+                # Hum bas 3 parts expect kar rahe hain: file, file_id, chat_id
+                if len(parts) >= 3:
+                    _, file_id, chat_id = parts[0], parts[1], parts[2]
+                    
+                    # Force subscribe check (optional, but good to have)
+                    if Config.UPDATE_CHANNEL:
+                        try:
+                            user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
+                            if user.status == "kicked":
+                                return await m.reply("Sorry, you are banned!")
+                        except: # Agar user member nahi hai, to bhi file de do
+                            pass
+                    
+                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                    caption = chnl_msg.caption or ""
+                    clean_caption = remove_mention(remove_link(caption))
+                    
+                    # Bina koi sawal pooche file bhej do
+                    await chnl_msg.copy(m.from_user.id, caption=clean_caption)
+                else:
+                    await m.reply("Sorry, this link seems to be broken or invalid.")
+            except Exception as e:
+                await m.reply(f"Could not fetch the file. It might be broken or expired.\nError: {e}")
+            return # Yahan par function rok do
+        # === END: FINAL SOLUTION KHATAM ===
         
-        # Baaki start payloads
+        # Baaki start payloads (jaise premium khareedne ke liye)
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
@@ -79,7 +65,6 @@ async def start(c: Bot, m: types.Message):
             return
 
     # Normal /start
-    # === YAHAN BADLAV KIYA GAYA HAI ===
     markup = types.InlineKeyboardMarkup(
         [
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
@@ -351,3 +336,5 @@ __To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider 
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
         ])
         await m.reply_text(not_subscribed_message, reply_markup=markup)
+
+# END OF FILE
