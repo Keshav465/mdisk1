@@ -5,8 +5,8 @@ from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
 from bot.utils import (
-    filter_chat, create_telegraph_post, short_from_text, 
-    remove_link, remove_mention, schedule_delete
+    filter_chat, create_telegraph_post, remove_link, 
+    remove_mention, schedule_delete, short_link # Naye function ko import kiya
 )
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
@@ -35,27 +35,31 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     i = 1
     bot_username = (await c.get_me()).username
     
-    # === YEH AAPKA PURANA AUR 100% SAHI LOGIC HAI ===
+    # === YEH HAI FINAL WORKING LOGIC ===
     for result in results:
-        result: t.Message
-        text_ = result.text or result.caption
-        if not text_ or not (result.document or result.video):
-            continue # Agar file nahi hai to is result ko chhod do
+        # Sirf un results ko lo jinme file hai
+        if not (result.document or result.video):
+            continue
 
+        text_ = result.text or result.caption
         title = remove_mention(remove_link(text_.splitlines()[0]))
-        link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
         
-        bin_text += template.format(i=i, title=title, link=link)
+        # Pehle original, lamba link banayenge
+        long_link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+        
+        # Agar free user hai, to is ek link ko short karenge
+        final_link = long_link
+        if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
+            final_link = await short_link(Config.SHORTENER_API, Config.SHORTENER_SITE, long_link)
+
+        bin_text += template.format(i=i, title=title, link=final_link)
         i += 1
-    # =======================================================
+    # ==================================
 
     if not bin_text:
         no_results_msg = await not_found_response(sts, query)
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
-
-    if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
-        bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
     
     text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
     soup = BeautifulSoup(text, "html.parser")
