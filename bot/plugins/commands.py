@@ -2,7 +2,7 @@
 
 from pyrogram import Client, filters, types, enums
 import asyncio
-# import base64 # <-- Iski ab zaroorat nahi hai
+# import base64 # Ab iski zaroorat nahi hai
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
@@ -19,39 +19,50 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
 
-        # === START: YAHAN PAR AAPKA FINAL SOLUTION HAI ===
-        # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI.
-        # Yeh sabhi users ke liye kaam karega, chahe free ho ya premium.
+        # === START: YAHAN PAR AAPKA SAHI LOGIC HAI ===
+        # Jab user file link se aaye...
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
-                # Hum bas 3 parts expect kar rahe hain: file, file_id, chat_id
                 if len(parts) >= 3:
                     _, file_id, chat_id = parts[0], parts[1], parts[2]
                     
-                    # Force subscribe check (optional, but good to have)
-                    if Config.UPDATE_CHANNEL:
-                        try:
-                            user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
-                            if user.status == "kicked":
-                                return await m.reply("Sorry, you are banned!")
-                        except: # Agar user member nahi hai, to bhi file de do
-                            pass
-                    
-                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                    caption = chnl_msg.caption or ""
-                    clean_caption = remove_mention(remove_link(caption))
-                    
-                    # Bina koi sawal pooche file bhej do
-                    await chnl_msg.copy(m.from_user.id, caption=clean_caption)
+                    user_id = m.from_user.id
+                    is_subbed = await sub_db.is_subscribed(user_id)
+
+                    # 1. Agar user PREMIUM hai (ya ADMIN), to direct file do
+                    if is_subbed or user_id in Config.ADMINS:
+                        if Config.UPDATE_CHANNEL:
+                            try:
+                                user = await c.get_chat_member(Config.UPDATE_CHANNEL, user_id)
+                                if user.status == "kicked":
+                                    return await m.reply("Sorry, you are banned!")
+                            except: pass
+                        
+                        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                        caption = chnl_msg.caption or ""
+                        clean_caption = remove_mention(remove_link(caption))
+                        await chnl_msg.copy(user_id, caption=clean_caption)
+
+                    # 2. Agar user FREE hai, to usko choice do
+                    else:
+                        buttons = [
+                            # Yeh button user ko ads ke saath wahi file dega
+                            [types.InlineKeyboardButton("📺 Download With Ads 📺", callback_data=f"ads_get_{file_id}_{chat_id}")],
+                            [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
+                        ]
+                        await m.reply(
+                            "**Hey Buddy! You Are Using The Free Version 😊**\n\nTo get this file, please choose an option below 👇",
+                            reply_markup=types.InlineKeyboardMarkup(buttons)
+                        )
                 else:
-                    await m.reply("Sorry, this link seems to be broken or invalid.")
+                    await m.reply("Sorry, this link is invalid.")
             except Exception as e:
-                await m.reply(f"Could not fetch the file. It might be broken or expired.\nError: {e}")
-            return # Yahan par function rok do
-        # === END: FINAL SOLUTION KHATAM ===
-        
-        # Baaki start payloads (jaise premium khareedne ke liye)
+                await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
+            return
+        # === END: SAHI LOGIC KHATAM ===
+
+        # Baaki start payloads
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
@@ -76,6 +87,8 @@ async def start(c: Bot, m: types.Message):
         ]
     )
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
+
+# === NEECHE KA BAAKI CODE WAISE HI RAKHEIN, USME KOI BADLAV NAHI HAI ===
 
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
@@ -316,7 +329,7 @@ async def my_status(c: Client, m: types.Message):
         expiry_date = subscription_details['expiry_date']
         time_remaining = expiry_date - datetime.now()
         
-        formatted_expiry = expiry_date.strftime("%d %B %Y at %I:%M %p")
+        formatted_expiry = expiry_date.strftime("%d %B %Y at %I M %p")
         formatted_remaining = human_time(time_remaining.total_seconds()) if time_remaining.total_seconds() > 0 else "Expired"
         
         status_message = f"""**💎 Your Premium Status 💎**
@@ -336,5 +349,3 @@ __To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider 
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
         ])
         await m.reply_text(not_subscribed_message, reply_markup=markup)
-
-# END OF FILE
