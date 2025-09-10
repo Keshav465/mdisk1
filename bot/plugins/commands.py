@@ -1,4 +1,4 @@
-# START OF FILE: bot/plugins/commands.py (FINAL FIXED VERSION WITH IMPORT ERROR FIXED)
+# START OF FILE: bot/plugins/commands.py (FINAL CLEAN VERSION)
 
 from pyrogram import Client, filters, types, enums
 import asyncio
@@ -6,7 +6,6 @@ import base64
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
-# YAHAN SE 'short_from_text' HATA DIYA GAYA HAI
 from bot.utils import get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention, schedule_delete, human_time
 from bot.database import group_db, user_db
 from bot.database.subscribers import sub_db
@@ -23,7 +22,6 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
         
-        # === YEH HAI FINAL BUG FIX ===
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
@@ -49,7 +47,6 @@ async def start(c: Bot, m: types.Message):
             except Exception as e:
                 await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
             return
-        # === END OF FINAL BUG FIX ===
 
         elif payload == "subscribe":
             user_name = m.from_user.first_name
@@ -82,6 +79,7 @@ async def start(c: Bot, m: types.Message):
     ])
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
 
+# ... (Baaki poori file waise ki waise hi rahegi, maine use yahan se hata diya hai taaki message chota rahe) ...
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
     await m.reply_text(Script.USER_HELP_MESSAGE, disable_web_page_preview=True)
