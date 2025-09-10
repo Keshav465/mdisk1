@@ -1,7 +1,6 @@
 # START OF FILE: bot/plugins/search_logic.py
 
 import asyncio
-import os
 from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
@@ -37,7 +36,10 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a></aside><hr>"
     bin_text = ""
     i = 1
-    bot_username = (await c.get_me()).username
+    
+    # Bot ka username bina '@' ke lenge
+    bot_info = await c.get_me()
+    bot_username = bot_info.username
     
     for result in results:
         text_ = result.text or result.caption
@@ -45,14 +47,11 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # === GPLINKS LOOP FIX YAHAN HAI ===
-        # Clean redirect link banega jo GPlinks loop ko fix karega
-        public_url = os.environ.get("PUBLIC_URL")
+        # === YEH HAI FINAL "MAGIC LINK" SOLUTION ===
+        # Yeh link browser ko bypass karke seedha Telegram app kholega
         payload = f"file_{result.id}_{result.chat.id}"
-        
-        # Agar PUBLIC_URL set nahi hai, toh purana link fallback ke liye use hoga
-        link = f"{public_url.rstrip('/')}/get/{payload}" if public_url else f"https://telegram.dog/{bot_username}?start={payload}"
-        # ================================
+        link = f"tg://resolve?domain={bot_username}&start={payload}"
+        # ============================================
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
