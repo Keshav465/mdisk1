@@ -54,6 +54,7 @@ class Config(object):
 
     # === SUBSCRIPTION SETTINGS (Aapki Settings) ===
     SUBSCRIPTION_PLANS = {
+        "1": 10,
         "7": 49,
         "30": 79,
         "90": 189,
