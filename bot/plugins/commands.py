@@ -1,4 +1,4 @@
-# START OF FILE: iPMxBT-main/bot/plugins/commands.py
+# START OF FILE: bot/plugins/commands.py (FINAL FIXED VERSION)
 
 from pyrogram import Client, filters, types, enums
 import asyncio
@@ -22,14 +22,16 @@ async def start(c: Bot, m: types.Message):
     if len(m.command) > 1:
         payload = m.command[1]
         
-        # === YAHAN PAR TERA FINAL SOLUTION HAI ===
+        # === YEH HAI FINAL BUG FIX ===
         # file_... link ke liye: SEEDHI FILE DO, KOI VERIFICATION NAHI
-        # Yeh tere purane 5000+ links aur GPlinks se aane wale dono users ke liye kaam karega.
+        # Yeh GPlinks aur purane links, dono ke liye kaam karega.
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
-                if len(parts) >= 3: # >= 3 se purane aur naye dono link chalenge
-                    _, file_id, chat_id = parts[0], parts[1], parts[2]
+                # parts[0] is "file", parts[1] is file_id, parts[2] is chat_id
+                if len(parts) >= 3:
+                    file_id = parts[1]
+                    chat_id = parts[2]
                     
                     # Force subscribe check (optional, but good to have for new users)
                     if Config.UPDATE_CHANNEL:
@@ -51,6 +53,7 @@ async def start(c: Bot, m: types.Message):
             except Exception as e:
                 await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
             return # Yahan par function rok do, taaki neeche ka code na chale
+        # === END OF FINAL BUG FIX ===
 
         # Normal premium khareedne wala link
         elif payload == "subscribe":
@@ -345,3 +348,5 @@ __To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider 
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
         ])
         await m.reply_text(not_subscribed_message, reply_markup=markup)
+
+# END OF FILE: bot/plugins/commands.py
