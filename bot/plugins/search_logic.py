@@ -10,6 +10,9 @@ from bot.utils import (
 )
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
+    """
+    This is the main search function. It now creates simple, direct file links.
+    """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
         return await m.reply("Database channel not configured.")
@@ -41,10 +44,9 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # === YAHAN PAR AAPKA ASLI SOLUTION HAI ===
-        # Sirf aur sirf simple file link banega
+        # === YAHAN SIRF AAPKA BATAYA HUA SIMPLE LINK BAN RAHA HAI ===
         link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
-        # ============================================
+        # ==========================================================
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
@@ -54,7 +56,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # Hamesha GPlinks use hoga agar configured hai
+    # Hamesha GPlinks use hoga agar API aur Site configured hai
     if Config.SHORTENER_API and Config.SHORTENER_SITE:
         bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
     
@@ -81,8 +83,13 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(final_results_msg, 300))
 
 async def not_found_response(m, query):
+    """
+    Handles the response when no results are found.
+    """
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
         [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
     )
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
+
+# END OF FILE: iPMxBT-main/bot/plugins/search_logic.py
