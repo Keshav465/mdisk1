@@ -1,6 +1,7 @@
-# START OF FILE: iPMxBT-main/bot/plugins/search_logic.py
+# START OF FILE: bot/plugins/search_logic.py
 
 import asyncio
+import os
 from pyrogram import Client, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
@@ -44,8 +45,14 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # Simple file link banega
-        link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+        # === GPLINKS LOOP FIX YAHAN HAI ===
+        # Clean redirect link banega jo GPlinks loop ko fix karega
+        public_url = os.environ.get("PUBLIC_URL")
+        payload = f"file_{result.id}_{result.chat.id}"
+        
+        # Agar PUBLIC_URL set nahi hai, toh purana link fallback ke liye use hoga
+        link = f"{public_url.rstrip('/')}/get/{payload}" if public_url else f"https://telegram.dog/{bot_username}?start={payload}"
+        # ================================
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
@@ -55,12 +62,9 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # === YAHAN PAR AAPKA ASLI SOLUTION HAI ===
-    # Ab yeh check karega ki user premium hai ya nahi.
     # Sirf FREE user ke liye GPlinks use hoga.
     if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
         bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
-    # ============================================
     
     text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
     soup = BeautifulSoup(text, "html.parser")
@@ -94,4 +98,4 @@ async def not_found_response(m, query):
     )
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
 
-# END OF FILE: iPMxBT-main/bot/plugins/search_logic.py
+# END OF FILE: bot/plugins/search_logic.py
