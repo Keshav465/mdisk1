@@ -14,6 +14,11 @@ from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
+    # === YAHAN PAR FINAL SOLUTION LAGAYA GAYA HAI ===
+    if m.from_user and m.from_user.is_bot:
+        return
+    # ===================================================
+    
     await user_db.get_user(m.from_user.id)
     
     if len(m.command) > 1:
@@ -22,8 +27,6 @@ async def start(c: Bot, m: types.Message):
         if payload.startswith("file_"):
             parts = payload.split("_")
             
-            # === START: PURANE LINKS KE LIYE SOLUTION (DIRECT FILE) ===
-            # Agar link purana hai (format: file_id_chatid), to direct file do.
             if len(parts) == 3:
                 try:
                     _, file_id, chat_id = parts[0], parts[1], parts[2]
@@ -36,18 +39,14 @@ async def start(c: Bot, m: types.Message):
                 except Exception as e:
                     await m.reply(f"Could not fetch the file from this link. Error: {e}")
                     return
-            # === END: PURANE LINKS KE LIYE SOLUTION ===
 
-            # === NAYE LINKS KA LOGIC (Pehle Jaisa) ===
-            # Agar link naya hai (format: file_id_chatid_query), to premium/free check karo.
             elif len(parts) == 4:
                 user_id = m.from_user.id
                 is_subbed = await sub_db.is_subscribed(user_id)
 
-                # Agar user ADMIN hai ya PREMIUM SUBSCRIBER hai, to direct file do
                 if user_id in Config.ADMINS or is_subbed:
                     try:
-                        _, file_id, chat_id, _ = parts # query ko ignore karo
+                        _, file_id, chat_id, _ = parts
                         chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                         caption = chnl_msg.caption or ""
                         clean_caption = remove_mention(remove_link(caption))
@@ -58,14 +57,11 @@ async def start(c: Bot, m: types.Message):
                         await m.reply(f"Could not fetch the file. Error: {e}")
                         return
                 else:
-                    # Agar user FREE hai, to usko original query se search karne ka option do
                     try:
                         encoded_query = parts[3]
                         padding = '=' * (-len(encoded_query) % 4)
                         original_query = base64.urlsafe_b64decode(encoded_query + padding).decode()
                         
-                        # NOTE: Agar aapko 'Get File With Ads' button se direct file deni hai, to callback banana padega
-                        # Filhal yeh code user ko ads ke sath search karne ka option dega.
                         buttons = [
                             [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{original_query[:50]}")],
                             [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
@@ -79,12 +75,10 @@ async def start(c: Bot, m: types.Message):
                         await m.reply(f"Sorry, this link seems broken. Please search again in the group or here!.\nError: {e}")
                         return
             
-            # Agar link na purana hai na naya, to error do
             else:
                 await m.reply("Sorry, this seems to be a broken or invalid link.")
                 return
         
-        # Baaki start payloads
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
@@ -97,7 +91,6 @@ async def start(c: Bot, m: types.Message):
             await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
             return
 
-    # Normal /start
     markup = types.InlineKeyboardMarkup(
         [
             [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
@@ -110,24 +103,22 @@ async def start(c: Bot, m: types.Message):
     )
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
 
-# Yahan par aapka baki ka code (help_command, about, id, etc.) same rahega
-# Isliye main use yahan dobara paste nahi kar raha hoon. 
-# Aapko sirf start() function ko upar diye gaye code se replace karna hai.
-
-# ... (baaki saare functions jaise help, about, id, index, etc. yahan rahenge)
-# ... (Niche tak poora file same rahega)
-
-
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
+    if m.from_user and m.from_user.is_bot:
+        return
     await m.reply_text(Script.USER_HELP_MESSAGE, disable_web_page_preview=True)
 
 @Client.on_message(filters.command("about") & filters.private, group=2)
 async def about(c: Client, m: types.Message):
+    if m.from_user and m.from_user.is_bot:
+        return
     await m.reply_text(Script.ABOUT_MESSAGE, disable_web_page_preview=True)
     
 @Client.on_message(filters.command('id'), group=2)
 async def showid(client, message: types.Message):
+    if message.from_user and message.from_user.is_bot:
+        return
     chat_type = message.chat.type
     if chat_type == enums.ChatType.PRIVATE:
         await message.reply_text(f"Your Telegram ID is: `{message.chat.id}`")
@@ -143,6 +134,40 @@ async def showid(client, message: types.Message):
             elif message.reply_to_message.sender_chat:
                 _id += f"\n**Replied Channel ID**: `{message.reply_to_message.sender_chat.id}`"
         await message.reply_text(_id)
+
+@Client.on_message(filters.command("status") & filters.private, group=2)
+async def my_status(c: Client, m: types.Message):
+    if m.from_user and m.from_user.is_bot:
+        return
+    user_id = m.from_user.id
+    subscription_details = await sub_db.is_subscribed(user_id)
+    
+    if subscription_details:
+        expiry_date = subscription_details['expiry_date']
+        time_remaining = expiry_date - datetime.now()
+        
+        formatted_expiry = expiry_date.strftime("%d %B %Y at %I:%M %p")
+        formatted_remaining = human_time(time_remaining.total_seconds()) if time_remaining.total_seconds() > 0 else "Expired"
+        
+        status_message = f"""**💎 Your Premium Status 💎**
+
+✅ You are an active subscriber.
+
+🗓️ **Expires On:** `{formatted_expiry}`
+⏳ **Time Remaining:** `{formatted_remaining}`
+"""
+        await m.reply_text(status_message)
+    else:
+        not_subscribed_message = """**❌ You Don't Have Premium Subscribtion.**
+
+__To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider Subscribing!__
+"""
+        markup = types.InlineKeyboardMarkup([
+            [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
+        ])
+        await m.reply_text(not_subscribed_message, reply_markup=markup)
+
+# === Baki ke functions admin-only hain, unhe chhedne ki zarurat nahi hai ===
 
 @Client.on_message(filters.command("index") & filters.group, group=2)
 @group_wrapper
@@ -347,33 +372,3 @@ async def dlfrwdlg(_, m: types.Message):
 @Client.on_message(filters.regex("Livegram Ads"))
 async def dlllivegram(_, m: types.Message):
     await m.delete()
-    
-@Client.on_message(filters.command("status") & filters.private, group=2)
-async def my_status(c: Client, m: types.Message):
-    user_id = m.from_user.id
-    subscription_details = await sub_db.is_subscribed(user_id)
-    
-    if subscription_details:
-        expiry_date = subscription_details['expiry_date']
-        time_remaining = expiry_date - datetime.now()
-        
-        formatted_expiry = expiry_date.strftime("%d %B %Y at %I:%M %p")
-        formatted_remaining = human_time(time_remaining.total_seconds()) if time_remaining.total_seconds() > 0 else "Expired"
-        
-        status_message = f"""**💎 Your Premium Status 💎**
-
-✅ You are an active subscriber.
-
-🗓️ **Expires On:** `{formatted_expiry}`
-⏳ **Time Remaining:** `{formatted_remaining}`
-"""
-        await m.reply_text(status_message)
-    else:
-        not_subscribed_message = """**❌ You Don't Have Premium Subscribtion.**
-
-__To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider Subscribing!__
-"""
-        markup = types.InlineKeyboardMarkup([
-            [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
-        ])
-        await m.reply_text(not_subscribed_message, reply_markup=markup)
