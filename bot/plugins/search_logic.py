@@ -1,4 +1,4 @@
-# START OF FILE: bot/plugins/search_logic.py (FINAL VERSION WITH YOUR EXACT LOGIC FROM SCREENSHOT)
+# START OF FILE: bot/plugins/search_logic.py (FINAL VERSION WITH YOUR EXACT SCREENSHOT LOGIC)
 
 import asyncio
 from pyrogram import Client, types as t, enums
@@ -11,7 +11,7 @@ from bot.utils import (
 
 async def perform_search(c: Client, m: t.Message, query: str, use_shortener: bool = False):
     """
-    This is the main search function. It now uses your tested and working logic from group_filter.py.
+    This function now replicates your old, working logic exactly to fix the GPlinks loop.
     """
     database_channels = Config.DATABASE_CHANNEL
     if not database_channels:
@@ -36,8 +36,9 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
     template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a></aside><hr>"
     bin_text = ""
     i = 1
-    bot_username = (await c.get_me()).username
+    bot_username = (await c.get_me()).username.replace("@", "")
     
+    # === YEH AAPKE SCREENSHOT WALA EXACT CODE HAI ===
     for result in results:
         result: t.Message
 
@@ -48,18 +49,17 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         title = text_.splitlines()[0]
         link = None # Link ko pehle None set karte hain
 
-        # === YEH AAPKA PURANA AUR 100% SAHI LOGIC HAI (SCREENSHOT WALA) ===
+        link_temp = f"https://telegram.dog/{bot_username}?start=file_"
+
         # Yeh sirf un messages ka link banayega jinme asli file (document/video) hai
         if result.document or result.video:
-            # Title ko saaf karo
             clean_title = remove_mention(remove_link(title))
-            # Ab link banao
-            link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+            link = f"{link_temp}{result.id}_{result.chat.id}"
             
-            # Result ko list mein add karo
+            # Result ko list mein tabhi add karo jab link bana ho
             bin_text += template.format(i=i, title=clean_title, link=link)
             i += 1
-        # =================================================================
+    # =======================================================
 
     if not bin_text:
         no_results_msg = await not_found_response(sts, query)
@@ -93,9 +93,6 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(final_results_msg, 300))
 
 async def not_found_response(m, query):
-    """
-    Handles the response when no results are found.
-    """
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
         [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
