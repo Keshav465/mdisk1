@@ -44,9 +44,8 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         
         title = remove_mention(remove_link(text_.splitlines()[0]))
         
-        # === YAHAN SIRF AAPKA BATAYA HUA SIMPLE LINK BAN RAHA HAI ===
+        # Simple file link banega
         link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
-        # ==========================================================
         
         bin_text += template.format(i=i, title=title, link=link)
         i += 1
@@ -56,9 +55,12 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    # Hamesha GPlinks use hoga agar API aur Site configured hai
-    if Config.SHORTENER_API and Config.SHORTENER_SITE:
+    # === YAHAN PAR AAPKA ASLI SOLUTION HAI ===
+    # Ab yeh check karega ki user premium hai ya nahi.
+    # Sirf FREE user ke liye GPlinks use hoga.
+    if use_shortener and Config.SHORTENER_API and Config.SHORTENER_SITE:
         bin_text = await short_from_text(Config.SHORTENER_API, Config.SHORTENER_SITE, bin_text)
+    # ============================================
     
     text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
     soup = BeautifulSoup(text, "html.parser")
