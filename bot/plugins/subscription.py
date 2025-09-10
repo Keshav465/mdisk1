@@ -1,4 +1,4 @@
-# START OF FILE: bot/plugins/subscription.py (FINAL FIXED VERSION)
+# START OF FILE: bot/plugins/subscription.py (FINAL CLEAN VERSION)
 
 import random
 import re
@@ -7,7 +7,6 @@ from pyrogram import Client, filters, types
 from bot.config import Config
 from bot.database.subscribers import sub_db
 from .search_logic import perform_search
-# YAHAN SE 'short_from_text' HATA DIYA GAYA HAI
 from bot.utils import schedule_delete, remove_link, remove_mention
 
 @Client.on_callback_query(filters.regex(r"^go_premium$"))
@@ -67,7 +66,6 @@ async def ads_get_callback(c, cb: types.CallbackQuery):
             file_id, chat_id = parts
             chnl_msg = await c.get_messages(int(chat_id), int(file_id))
             caption = chnl_msg.caption or ""
-            # YAHAN SE SHORTENER WALA CODE HATA DIYA GAYA HAI
             clean_caption = remove_mention(remove_link(caption))
             sent_file_msg = await chnl_msg.copy(cb.from_user.id, caption=clean_caption)
             asyncio.create_task(schedule_delete(sent_file_msg, 86400))
