@@ -160,16 +160,10 @@ async def schedule_delete(message: types.Message, delay: int):
     except Exception as e:
         print(f"Error while deleting message {message.id}: {e}")
 
-async def short_link(api_key, base_site, link, from_text=None):
+# YEH FUNCTION EK-EK LINK KO SHORT KAREGA
+async def short_link(api_key, base_site, link):
     if bool(api_key and base_site):
         shortzy = Shortzy(api_key, base_site)
         return await shortzy.convert(link, silently_fail=True)
     else:
         return link
-
-async def short_from_text(api_key, base_site, text):
-    if bool(api_key and base_site):
-        shortzy = Shortzy(api_key, base_site)
-        return await shortzy.convert_from_text(text, silently_fail=True)
-    else:
-        return text
