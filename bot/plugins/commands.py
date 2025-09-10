@@ -1,9 +1,8 @@
-# START OF FILE: bot/plugins/commands.py
+# FILE: bot/plugins/commands.py
 
 from pyrogram import Client, filters, types, enums
 import asyncio
 import base64 
-import re # <-- Yeh import zaroori hai
 from datetime import datetime
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
@@ -12,91 +11,110 @@ from bot.database import group_db, user_db
 from bot.database.subscribers import sub_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
+from bot.plugins.search_logic import perform_search
 
 @Client.on_message(filters.command("start") & filters.private, group=2)
 async def start(c: Bot, m: types.Message):
+    if m.forward_date:
+        return
     await user_db.get_user(m.from_user.id)
     
     if len(m.command) > 1:
         payload = m.command[1]
-
-        # === START: YEH HAI AAPKA FINAL AUR CORRECT LOGIC ===
+        
+        # === PURANE LINKS AUR DIRECT FILE KE LIYE ===
         if payload.startswith("file_"):
             try:
                 parts = payload.split("_")
                 if len(parts) >= 3:
                     _, file_id, chat_id = parts[0], parts[1], parts[2]
                     
-                    user_id = m.from_user.id
-                    is_subbed = await sub_db.is_subscribed(user_id)
-
-                    # 1. Agar user PREMIUM hai (ya ADMIN), to direct file do
-                    if is_subbed or user_id in Config.ADMINS:
-                        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                        caption = chnl_msg.caption or ""
-                        clean_caption = remove_mention(remove_link(caption))
-                        await chnl_msg.copy(user_id, caption=clean_caption)
-
-                    # 2. Agar user FREE hai...
-                    else:
-                        # ...to pehle file ka message get karo taaki hume movie ka naam mile
-                        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                        
-                        # File name ko hi query banayenge
-                        if chnl_msg.document:
-                            filename = chnl_msg.document.file_name
-                        elif chnl_msg.video:
-                            filename = chnl_msg.video.file_name
-                        else:
-                            # Agar file name nahi mila to caption se le lenge
-                            filename = (chnl_msg.caption or "Movie").splitlines()[0]
-
-                        # File name se extra cheezein hata do
-                        query = re.sub(r'(\.\w+$)|[\[\(].*?[\]\)]|@\w+|https?://\S+', '', filename).strip()
-
-                        # Ab "With Ads" wala button SEARCH trigger karega, file nahi dega
-                        buttons = [
-                            [types.InlineKeyboardButton("📺 Get File With Ads 📺", callback_data=f"ads_search_{query[:50]}")],
-                            [types.InlineKeyboardButton("💎 Go Premium - No Ads 💎", callback_data="go_premium")]
-                        ]
-                        await m.reply(
-                            "**Hey Buddy! You Are Using The Free Version 😊**\n\nTo get this file, please choose an option:",
-                            reply_markup=types.InlineKeyboardMarkup(buttons)
-                        )
+                    if Config.UPDATE_CHANNEL:
+                        try:
+                            user = await c.get_chat_member(Config.UPDATE_CHANNEL, m.from_user.id)
+                            if user.status == "kicked":
+                                return await m.reply("Sorry, you are banned!")
+                        except:
+                            pass
+                    
+                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                    caption = chnl_msg.caption or ""
+                    clean_caption = remove_mention(remove_link(caption))
+                    
+                    await chnl_msg.copy(m.from_user.id, caption=clean_caption)
                 else:
                     await m.reply("Sorry, this link is invalid.")
             except Exception as e:
-                await m.reply(f"Sorry, an error occurred. The link might be broken.\nError: {e}")
+                await m.reply(f"Sorry, this link is broken or expired.\nError: {e}")
             return
-        # === END: FINAL LOGIC KHATAM ===
-        
-        # Baaki start payloads
+
+        # === YEH NAYA CODE HAI JO FREE USERS KE LINK KO HANDLE KAREGA ===
+        elif payload.startswith("adsget_"):
+            if not (Config.SHORTENER_API and Config.SHORTENER_SITE):
+                return await m.reply("Sorry, the admin has not configured the shortener service.")
+            try:
+                from bot.utils import short_link 
+                
+                parts = payload.replace("adsget_", "").split("_")
+                file_id, chat_id = parts[0], parts[1]
+                
+                bot_username = (await c.get_me()).username
+                
+                # Yeh final link hai jo user ko ad dekhne ke baad milega
+                final_destination_link = f"https://t.me/{bot_username}?start=file_{file_id}_{chat_id}"
+                
+                # Sirf is ek link ko short karenge
+                ad_link = await short_link(Config.SHORTENER_API, Config.SHORTENER_SITE, final_destination_link)
+                
+                if not ad_link or ad_link == final_destination_link:
+                    await m.reply("Sorry, could not generate the ad link. The shortener might be down. Please try again later.")
+                    return
+
+                btn = [[types.InlineKeyboardButton("✅ Unlock File ✅", url=ad_link)]]
+                await m.reply(
+                    "**Aapki file taiyaar hai!**\n\n"
+                    "Neeche diye gaye button par click karein aur ad page par kuch seconds intezaar karein, aapko file mil jayegi.",
+                    reply_markup=types.InlineKeyboardMarkup(btn)
+                )
+            except Exception as e:
+                await m.reply(f"Sorry, an error occurred while creating the ad link.\nError: {e}")
+            return
+        # === NAYA CODE YAHAN KHATAM HOTA HAI ===
+
+        # Premium khareedne wala link
         elif payload == "subscribe":
             user_name = m.from_user.first_name
             welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
             PLAN_BUTTONS = [
-                [types.InlineKeyboardButton(
-                    f"{days} Days Plan @ ₹{price}",
-                    callback_data=f"subscribe_{days}"
-                )] for days, price in Config.SUBSCRIPTION_PLANS.items()
+                [types.InlineKeyboardButton(f"{days} Days Plan @ ₹{price}", callback_data=f"subscribe_{days}")] 
+                for days, price in Config.SUBSCRIPTION_PLANS.items()
             ]
-            await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
+            await m.reply(text=welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
+            return
+
+        # Deep search link
+        elif payload.startswith("search_"):
+            try:
+                encoded_query = payload.replace("search_", "", 1)
+                padding = '=' * (-len(encoded_query) % 4)
+                query = base64.urlsafe_b64decode(encoded_query + padding).decode()
+                sts = await m.reply(f"`Searching for: {query}...`")
+                # Free users get links with ads by default from deep search
+                await perform_search(c, sts, query, use_shortener=True)
+            except Exception as e:
+                await m.reply(f"Sorry, this search link is broken.\nError: {e}")
             return
 
     # Normal /start
-    markup = types.InlineKeyboardMarkup(
+    markup = types.InlineKeyboardMarkup([
+        [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
         [
-            [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
-            [
-                types.InlineKeyboardButton(text="Help", callback_data="help"),
-                types.InlineKeyboardButton(text="About", callback_data="about"),
-            ],
-            [types.InlineKeyboardButton(text="Close", callback_data="delete")],
-        ]
-    )
+            types.InlineKeyboardButton(text="Help", callback_data="help"),
+            types.InlineKeyboardButton(text="About", callback_data="about"),
+        ],
+        [types.InlineKeyboardButton(text="Close", callback_data="delete")],
+    ])
     await m.reply_text(Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup)
-
-# === NEECHE KA BAAKI CODE WAISE HI RAKHEIN ===
 
 @Client.on_message(filters.command(["help", "userrights"]) & filters.private, group=2)
 async def help_command(c: Client, m: types.Message):
