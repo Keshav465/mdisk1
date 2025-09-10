@@ -38,7 +38,7 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
         asyncio.create_task(schedule_delete(no_results_msg, 300))
         return
 
-    template = "<aside><b>{i}. {title}</b><br><a href='{link}'>ðŸ‘‰ Click Here To Download</a></aside><hr>"
+    template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a></aside><hr>"
     bin_text = ""
     i = 1
     bot_username = (await c.get_me()).username
@@ -103,6 +103,6 @@ async def perform_search(c: Client, m: t.Message, query: str, use_shortener: boo
 async def not_found_response(m, query):
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
-        [[t.InlineKeyboardButton("ðŸ” Click to Check Spellingâœ…", url=f"https://www.google.com/search?q={reply}+movie")]]
+        [[t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie")]]
     )
     return await m.edit(Script.NO_REPLY_TEXT.format(query), disable_web_page_preview=0, reply_markup=reply_markup)
