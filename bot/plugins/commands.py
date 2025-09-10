@@ -55,9 +55,9 @@ async def start(c: Bot, m: types.Message):
         # Normal premium khareedne wala link
         elif payload == "subscribe":
             user_name = m.from_user.first_name
-            welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access ðŸ˜‰**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
+            welcome_text = f"**__Hey, {user_name},\nWelcome To Our Premium Access 😉**\n\nSelect Subscribtion Plans Here!\n\nCheck: /status __"
             PLAN_BUTTONS = [
-                [types.InlineKeyboardButton(f"{days} Days Plan @ â‚¹{price}", callback_data=f"subscribe_{days}")] 
+                [types.InlineKeyboardButton(f"{days} Days Plan @ ₹{price}", callback_data=f"subscribe_{days}")] 
                 for days, price in Config.SUBSCRIPTION_PLANS.items()
             ]
             await m.reply(welcome_text, reply_markup=types.InlineKeyboardMarkup(PLAN_BUTTONS))
@@ -77,7 +77,7 @@ async def start(c: Bot, m: types.Message):
 
     # Normal /start
     markup = types.InlineKeyboardMarkup([
-        [types.InlineKeyboardButton("ðŸ’Ž Go Premium ðŸ’Ž", callback_data="go_premium")],
+        [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")],
         [
             types.InlineKeyboardButton(text="Help", callback_data="help"),
             types.InlineKeyboardButton(text="About", callback_data="about"),
@@ -294,11 +294,11 @@ async def admin_check_command(c: Client, m: types.Message):
     except Exception as e:
         admins_list_from_config = f"Error loading: {e}"
     debug_text = (
-        f"--- ðŸ› ï¸ Admin Configuration Check ðŸ› ï¸ ---\n\n"
-        f"ðŸ‘¤ **Your User ID:** `{user_id}`\n"
-        f"ðŸ”‘ **OWNER_ID from config:** `{owner_id_from_config}`\n"
-        f"ðŸ“‹ **ADMINS list from config:** `{admins_list_from_config}`\n\n"
-        f"âœ… **Status:** You are a verified admin.\n\n"
+        f"--- 🛠️ Admin Configuration Check 🛠️ ---\n\n"
+        f"👤 **Your User ID:** `{user_id}`\n"
+        f"🔑 **OWNER_ID from config:** `{owner_id_from_config}`\n"
+        f"📋 **ADMINS list from config:** `{admins_list_from_config}`\n\n"
+        f"✅ **Status:** You are a verified admin.\n\n"
         f"----------------------------------------"
     )
     final_message = debug_text + Script.ADMIN_HELP_MESSAGE
@@ -328,20 +328,20 @@ async def my_status(c: Client, m: types.Message):
         formatted_expiry = expiry_date.strftime("%d %B %Y at %I:%M %p")
         formatted_remaining = human_time(time_remaining.total_seconds()) if time_remaining.total_seconds() > 0 else "Expired"
         
-        status_message = f"""**ðŸ’Ž Your Premium Status ðŸ’Ž**
+        status_message = f"""**💎 Your Premium Status 💎**
 
-âœ… You are an active subscriber.
+✅ You are an active subscriber.
 
-ðŸ—“ï¸ **Expires On:** `{formatted_expiry}`
-â³ **Time Remaining:** `{formatted_remaining}`
+🗓️ **Expires On:** `{formatted_expiry}`
+⏳ **Time Remaining:** `{formatted_remaining}`
 """
         await m.reply_text(status_message)
     else:
-        not_subscribed_message = """**âŒ You Don't Have Premium Subscribtion.**
+        not_subscribed_message = """**❌ You Don't Have Premium Subscribtion.**
 
 __To Enjoy Ad-free Entertainment and Get Direct Files Without Any Ads, Consider Subscribing!__
 """
         markup = types.InlineKeyboardMarkup([
-            [types.InlineKeyboardButton("ðŸ’Ž Go Premium ðŸ’Ž", callback_data="go_premium")]
+            [types.InlineKeyboardButton("💎 Go Premium 💎", callback_data="go_premium")]
         ])
         await m.reply_text(not_subscribed_message, reply_markup=markup)
