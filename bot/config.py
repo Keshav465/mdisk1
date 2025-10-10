@@ -27,12 +27,12 @@ class Config(object):
     )
     DATABASE_NAME = os.environ.get("DATABASE_NAME", BOT_USERNAME)
     DATABASE_URL = os.environ.get("DATABASE_URL", None)
-    OWNER_ID = int(os.environ.get("OWNER_ID", "5977288813"))  # id of the owner
+    OWNER_ID = int(os.environ.get("OWNER_ID", "8293785841"))  # id of the owner
     ADMINS.append(OWNER_ID) if OWNER_ID not in ADMINS else []
 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "0"))
     LIMIT = int(os.environ.get("LIMIT", "100"))
-    UPDATE_CHANNEL = os.environ.get("UPDATE_CHANNEL", "FYM_UPDATE_OFF")
+    UPDATE_CHANNEL = os.environ.get("UPDATE_CHANNEL", "filmy4uhd007")
     BROADCAST_AS_COPY = is_enabled(
         (os.environ.get("BROADCAST_AS_COPY", "False")), False
     )
