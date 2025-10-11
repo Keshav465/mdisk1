@@ -63,7 +63,7 @@ async def pm_filter(c, m: t.Message):
             await sts.edit("Some error occured")
             return
 
-        template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
+        template = "<aside><b>{i}.{title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
         bin_text = ""
         i = 1
         for result in results:
