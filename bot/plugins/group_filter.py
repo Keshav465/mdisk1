@@ -1,4 +1,4 @@
-import asyncio
+Import asyncio
 import re
 from pyrogram import Client, filters, types as t, enums
 from bot.config import Config, Script
@@ -63,7 +63,10 @@ async def pm_filter(c, m: t.Message):
             await sts.edit("Some error occured")
             return
 
-        template = "<aside><b>{i}.{title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
+        # *** यहाँ बदलाव किया गया है: ब्लॉक टैग्स (<aside>, <br>, <hr>) हटा दिए गए हैं ***
+        # अब यह कंटीन्यूअस फ्लो (continuous flow) में दिखेगा।
+        template = "<b>{i}. {title}</b> (<a href='{link}'>Download Link</a>) ID: {id} &nbsp;—&nbsp; "
+        
         bin_text = ""
         i = 1
         for result in results:
@@ -101,6 +104,7 @@ async def pm_filter(c, m: t.Message):
         if is_shortener:
             bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
+        # <hr> tag को अब सिर्फ एक बार, results से पहले/बाद में इस्तेमाल किया जा सकता है।
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
 
         soup = BeautifulSoup(text, "html.parser")
