@@ -62,5 +62,5 @@ class Database:
         group = await self.get_group(group_id)
         access_days = datetime.fromtimestamp(time.mktime(group["last_verified"].timetuple()) + group['access_days'])
         return access_days, int((access_days - datetime.now()).total_seconds())
-
+    
 group_db = Database(Config.DATABASE_URL, Config.DATABASE_NAME)
