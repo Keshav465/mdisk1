@@ -63,7 +63,7 @@ async def pm_filter(c, m: t.Message):
             await sts.edit("Some error occured")
             return
 
-        template = "<aside><b>{i}.{title}</b><br><a href='{link}'>ðŸ‘‰ Click Here To Download</a> | {id}</aside><hr>"
+        template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
         bin_text = ""
         i = 1
         for result in results:
@@ -102,67 +102,6 @@ async def pm_filter(c, m: t.Message):
             bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
-
-        soup = BeautifulSoup(text, "html.parser")
-        formatted_text = soup.prettify()
-
-        reply_url = await create_telegraph_post(query, formatted_text)
-
-        reply_markup = t.InlineKeyboardMarkup(
-            [
-                [
-                    t.InlineKeyboardButton(
-                        "How to Download?",
-                        url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
-                    ),
-                ],
-                [
-                    t.InlineKeyboardButton(
-                        "Request Movie",
-                        url=Config.REQUEST_MOVIE_URL,
-                    )
-                ],
-            ]
-        ) if Config.RESULTS_HOW_TO_DOWNLOAD_LINK and Config.REQUEST_MOVIE_URL and is_private else None
-
-        replied_link = await sts.edit(Script.RESULTS_MESSAGE.format(
-            query=query.upper(),
-            url=reply_url
-        ), disable_web_page_preview=1,
-        reply_markup=reply_markup 
-        )
-
-        if bool(auto_delete and auto_delete_time):
-            asyncio.create_task(auto_delete_func(
-                replied_link, auto_delete_time))
-
-        return
-
-
-async def not_found_response(m, query):
-    reply = query.replace(" ", "+")
-    reply_markup = t.InlineKeyboardMarkup(
-        [
-            [
-                t.InlineKeyboardButton(
-                    "Check Release Date",
-                    url=f"https://www.google.com/search?q={reply}+movie+release+date",
-                ),
-            ],
-            [
-                t.InlineKeyboardButton(
-                    "ðŸ” Click to Check Spellingâœ…",
-                    url=f"https://www.google.com/search?q={reply}+movie",
-                )
-            ],
-        ]
-    )
-
-    return await m.edit(
-        Script.NO_REPLY_TEXT.format(query),
-        disable_web_page_preview=0,
-        reply_markup=reply_markup,
-    )        text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
 
         soup = BeautifulSoup(text, "html.parser")
         formatted_text = soup.prettify()
