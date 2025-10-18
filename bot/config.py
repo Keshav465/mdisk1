@@ -85,7 +85,7 @@ class Script(object):
     """
     ADMIN_HELP_MESSAGE = os.environ.get("ADMIN_HELP_MESSAGE", ADMIN_HELP_MESSAGE)
 
-    ABOUT_MESSAGE = os.environ.get("ABOUT_MESSAGE", "__Made With ❤️ By @RoyalKrrishna __")
+    ABOUT_MESSAGE = os.environ.get("ABOUT_MESSAGE", "__Made With ❤️ By @sdmoviespointes __")
 
     AUTO_DELETE_TEXT = "This command is used to turn On/Off auto delete in your group.\nTo set auto delete time: /set_auto_delete\n\nUsage: `/auto_delete True/False`\nExample: /auto_delete True\n\nCurennt Config: {}"
 
