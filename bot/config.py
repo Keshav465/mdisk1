@@ -32,7 +32,7 @@ class Config(object):
 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "0"))
     LIMIT = int(os.environ.get("LIMIT", "100"))
-    UPDATE_CHANNEL = os.environ.get("UPDATE_CHANNEL", "filmy4uhd007")
+    UPDATE_CHANNEL = os.environ.get("UPDATE_CHANNEL", "sdmoviepointes")
     BROADCAST_AS_COPY = is_enabled(
         (os.environ.get("BROADCAST_AS_COPY", "False")), False
     )
