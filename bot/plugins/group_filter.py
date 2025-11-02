@@ -9,6 +9,7 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
+    
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
@@ -43,7 +44,7 @@ async def pm_filter(c, m: t.Message):
             shortener_site = group_info["shortener_site"]
 
         is_shortener = bool(shortener_api and shortener_site)
-
+        
         if is_shortener:
             database_channels = Config.DATABASE_CHANNEL
 
@@ -55,7 +56,7 @@ async def pm_filter(c, m: t.Message):
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("Some error occurred.")
+            await sts.edit("Some error occurred ❌")
             return
 
         template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
@@ -63,6 +64,7 @@ async def pm_filter(c, m: t.Message):
         i = 1
         for result in results:
             result: t.Message
+
             text_ = result.text or result.caption
             title = text_.splitlines()[0]
             link = 0
@@ -76,7 +78,13 @@ async def pm_filter(c, m: t.Message):
             elif result.photo or result.text:
                 link = result.link
 
-            temp = template.format(i=i, title=title, link=link, id=result.id) if link else None
+            temp = template.format(
+                i=i,
+                title=title,
+                link=link,
+                id=result.id
+            ) if link else None
+
             if text_ := temp:
                 bin_text += text_
                 i += 1
@@ -89,37 +97,41 @@ async def pm_filter(c, m: t.Message):
             bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+
+        # Add Filmy4uHD site link at the end (inside Telegraph page)
+        text += "<h4>🎬 Watch & Download More Movies Here 👇</h4><a href='https://filmy4uhd.vercel.app'>🌐 Filmy4uHD Official Site</a><hr>"
+
         soup = BeautifulSoup(text, "html.parser")
         formatted_text = soup.prettify()
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # 💎 Attractive text + Filmy4uHD link added below results message
-        extra_text = (
-            f"🎬 <b>Watch & Download More Movies Here 👇</b>\n"
-            f"🌐 <a href='https://filmy4uhd.vercel.app'>Filmy4uHD</a>"
-        )
-
-        final_text = (
-            f"✅ <b>RESULTS FOUND FOR:</b> <code>{query.upper()}</code>\n"
-            f"👉 <a href='{reply_url}'>Click Here For Results</a>\n\n{extra_text}"
-        )
+        # Keep same result message + append Filmy4uHD link
+        main_text = Script.RESULTS_MESSAGE.format(query=query.upper(), url=reply_url)
+        extra_text = "\n\n🎬 Watch & Download More Movies Here 👇\n🌐 https://filmy4uhd.vercel.app"
+        final_text = f"{main_text}{extra_text}"
 
         reply_markup = t.InlineKeyboardMarkup(
             [
                 [
-                    t.InlineKeyboardButton("How to Download?", url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK),
+                    t.InlineKeyboardButton(
+                        "How to Download?",
+                        url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
+                    ),
                 ],
                 [
-                    t.InlineKeyboardButton("Request Movie", url=Config.REQUEST_MOVIE_URL)
+                    t.InlineKeyboardButton(
+                        "Request Movie",
+                        url=Config.REQUEST_MOVIE_URL,
+                    )
                 ],
             ]
         ) if Config.RESULTS_HOW_TO_DOWNLOAD_LINK and Config.REQUEST_MOVIE_URL and is_private else None
 
         replied_link = await sts.edit(
             final_text,
-            disable_web_page_preview=0,
-            reply_markup=reply_markup,
+            disable_web_page_preview=False,
+            reply_markup=reply_markup
         )
 
         if bool(auto_delete and auto_delete_time):
@@ -133,13 +145,22 @@ async def not_found_response(m, query):
     reply_markup = t.InlineKeyboardMarkup(
         [
             [
-                t.InlineKeyboardButton("Check Release Date", url=f"https://www.google.com/search?q={reply}+movie+release+date"),
+                t.InlineKeyboardButton(
+                    "Check Release Date",
+                    url=f"https://www.google.com/search?q={reply}+movie+release+date",
+                ),
             ],
             [
-                t.InlineKeyboardButton("🔍 Click to Check Spelling✅", url=f"https://www.google.com/search?q={reply}+movie"),
+                t.InlineKeyboardButton(
+                    "🔍 Click to Check Spelling✅",
+                    url=f"https://www.google.com/search?q={reply}+movie",
+                ),
             ],
             [
-                t.InlineKeyboardButton("🌐 Visit Filmy4uHD", url="https://filmy4uhd.vercel.app"),
+                t.InlineKeyboardButton(
+                    "🌐 Visit Filmy4uHD",
+                    url="https://filmy4uhd.vercel.app",
+                ),
             ],
         ]
     )
