@@ -98,18 +98,20 @@ async def pm_filter(c, m: t.Message):
 
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
 
-        # Add Filmy4uHD site link at the end (inside Telegraph page)
-        text += "<h4>🎬 Watch & Download More Movies Here 👇</h4><a href='https://filmy4uhd.vercel.app'>🌐 Filmy4uHD Official Site</a><hr>"
-
         soup = BeautifulSoup(text, "html.parser")
         formatted_text = soup.prettify()
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # Keep same result message + append Filmy4uHD link
-        main_text = Script.RESULTS_MESSAGE.format(query=query.upper(), url=reply_url)
-        extra_text = "\n\n🎬 Watch & Download More Movies Here 👇\n🌐 https://filmy4uhd.vercel.app"
-        final_text = f"{main_text}{extra_text}"
+        # --- Custom message format you requested ---
+        final_text = (
+            f"Click Here 👇 For \"{query.upper()}\"\n\n"
+            f"🍿🎬 {query.upper()}\n"
+            f"🍿🎬 CLICK ME FOR RESULTS\n"
+            f"{reply_url}\n\n"
+            f"🎬 Watch & Download More Movies and Series Here 👇\n"
+            f"🌐 https://filmy4uhd.vercel.app"
+        )
 
         reply_markup = t.InlineKeyboardMarkup(
             [
