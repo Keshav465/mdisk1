@@ -24,24 +24,17 @@ async def pm_filter(c, m: t.Message):
         if await is_premium_group(chat_id):
             free_group = False
 
-    query = m.text
+    query = m.text.strip()
 
     if m.text.startswith("/"):
-        return  # ignore commands
+        return
     if re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", query):
         return
 
     if 2 < len(query) < 100:
-
         is_private = m.chat.type == enums.chat_type.ChatType.PRIVATE
 
-        database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site = (
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
+        database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site = None, None, None, None, None
         if m.chat.type == enums.chat_type.ChatType.PRIVATE or free_group:
             database_channels = Config.DATABASE_CHANNEL
             auto_delete = Config.AUTO_DELETE
@@ -58,48 +51,40 @@ async def pm_filter(c, m: t.Message):
             shortener_site = group_info["shortener_site"]
 
         is_shortener = bool(shortener_api and shortener_site)
-
         if is_shortener:
             database_channels = Config.DATABASE_CHANNEL
 
         if not database_channels:
             return
 
-        sts = await m.reply("`Searching...`")
+        sts = await m.reply("`🔎 Searching... Please wait`")
 
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("Some error occurred ❌")
+            await sts.edit("⚠️ Some error occurred while searching.")
             return
 
-        template = "<aside><b>{i}.🍿{title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
+        template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
         bin_text = ""
         i = 1
         for result in results:
             result: t.Message
-
             text_ = result.text or result.caption
             title = text_.splitlines()[0]
-            link = 0
+            link = None
             if free_group or is_shortener:
                 bot_username = c.username.replace("@", "")
                 link_temp = f"https://telegram.dog/{bot_username}?start=file_"
-                link = None
                 if result.document or result.video:
                     title = remove_mention(remove_link(title))
                     link = f"{link_temp}{result.id}_{result.chat.id}"
             elif result.photo or result.text:
                 link = result.link
 
-            temp = (
-                template.format(i=i, title=title, link=link, id=result.id)
-                if link
-                else None
-            )
-
-            if text_ := temp:
-                bin_text += text_
+            if link:
+                temp = template.format(i=i, title=title, link=link, id=result.id)
+                bin_text += temp
                 i += 1
 
         if not bin_text:
@@ -110,39 +95,52 @@ async def pm_filter(c, m: t.Message):
             bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
         text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
-
         soup = BeautifulSoup(text, "html.parser")
         formatted_text = soup.prettify()
-
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # --- Custom message format (your requested style) ---
-        final_text = (
-            f"Click Here 👇 For \"{query.upper()}\"\n\n"
-            f"🍿🎬 {query.upper()}\n"
-            f"🍿🎬 CLICK ME FOR RESULTS\n\n"
-            f"🎬 Watch & Download More Movies and Series Here 👇\n"
-            f"🌐 https://filmy4uhd.vercel.app"
+        # Inline buttons same as before
+        reply_markup = (
+            t.InlineKeyboardMarkup(
+                [
+                    [
+                        t.InlineKeyboardButton(
+                            "📥 How to Download?",
+                            url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
+                        ),
+                    ],
+                    [
+                        t.InlineKeyboardButton(
+                            "🎬 Request Movie",
+                            url=Config.REQUEST_MOVIE_URL,
+                        ),
+                    ],
+                ]
+            )
+            if Config.RESULTS_HOW_TO_DOWNLOAD_LINK
+            and Config.REQUEST_MOVIE_URL
+            and is_private
+            else None
         )
 
-        reply_markup = t.InlineKeyboardMarkup(
-            [
-                [
-                    t.InlineKeyboardButton(
-                        "📥 CLICK ME FOR RESULTS", url=reply_url
-                    ),
-                ],
-                [
-                    t.InlineKeyboardButton(
-                        "🎬 Visit Filmy4uHD Site",
-                        url="https://filmy4uhd.vercel.app",
-                    )
-                ],
-            ]
-        )
+        # ---- ATTRACTIVE CUSTOM TEXT ----
+        custom_text = f"""
+✨ <b>Click Here 👇 For “{query.upper()}”</b>
+
+🍿🎬 <b>{query.upper()}</b>
+🔗 CLICK ME FOR RESULTS BELOW 👇
+📜 <a href="{reply_url}">{reply_url}</a>
+
+━━━━━━━━━━━━━━━━━━━━━━
+🎥 <b>Watch & Download More Movies & Series 👇</b>
+🌐 <a href="https://www.google.com/search?q=filmy4uhd.vercel.app">https://www.google.com/search?q=filmy4uhd.vercel.app</a>
+━━━━━━━━━━━━━━━━━━━━━━
+"""
 
         replied_link = await sts.edit(
-            final_text, disable_web_page_preview=False, reply_markup=reply_markup
+            custom_text,
+            disable_web_page_preview=False,
+            reply_markup=reply_markup,
         )
 
         if bool(auto_delete and auto_delete_time):
@@ -157,27 +155,21 @@ async def not_found_response(m, query):
         [
             [
                 t.InlineKeyboardButton(
-                    "Check Release Date",
+                    "📅 Check Release Date",
                     url=f"https://www.google.com/search?q={reply}+movie+release+date",
                 ),
             ],
             [
                 t.InlineKeyboardButton(
-                    "🔍 Click to Check Spelling✅",
+                    "🔍 Check Spelling / Search on Google",
                     url=f"https://www.google.com/search?q={reply}+movie",
-                ),
-            ],
-            [
-                t.InlineKeyboardButton(
-                    "🌐 Visit Filmy4uHD",
-                    url="https://filmy4uhd.vercel.app",
                 ),
             ],
         ]
     )
 
     return await m.edit(
-        Script.NO_REPLY_TEXT.format(query),
-        disable_web_page_preview=0,
+        f"❌ No results found for <b>{query}</b>.\nTry checking spelling or release info below 👇",
+        disable_web_page_preview=False,
         reply_markup=reply_markup,
     )
