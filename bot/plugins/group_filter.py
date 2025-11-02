@@ -3,13 +3,21 @@ import re
 from pyrogram import Client, filters, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
-from bot.utils import auto_delete_func, filter_chat, create_telegraph_post, is_premium_group, short_from_text, remove_link, remove_mention
+from bot.utils import (
+    auto_delete_func,
+    filter_chat,
+    create_telegraph_post,
+    is_premium_group,
+    short_from_text,
+    remove_link,
+    remove_mention,
+)
 from bot.database import group_db
 
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
-    
+
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
@@ -27,7 +35,13 @@ async def pm_filter(c, m: t.Message):
 
         is_private = m.chat.type == enums.chat_type.ChatType.PRIVATE
 
-        database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site = None, None, None, None, None
+        database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site = (
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
         if m.chat.type == enums.chat_type.ChatType.PRIVATE or free_group:
             database_channels = Config.DATABASE_CHANNEL
             auto_delete = Config.AUTO_DELETE
@@ -44,7 +58,7 @@ async def pm_filter(c, m: t.Message):
             shortener_site = group_info["shortener_site"]
 
         is_shortener = bool(shortener_api and shortener_site)
-        
+
         if is_shortener:
             database_channels = Config.DATABASE_CHANNEL
 
@@ -78,12 +92,11 @@ async def pm_filter(c, m: t.Message):
             elif result.photo or result.text:
                 link = result.link
 
-            temp = template.format(
-                i=i,
-                title=title,
-                link=link,
-                id=result.id
-            ) if link else None
+            temp = (
+                template.format(i=i, title=title, link=link, id=result.id)
+                if link
+                else None
+            )
 
             if text_ := temp:
                 bin_text += text_
@@ -103,12 +116,11 @@ async def pm_filter(c, m: t.Message):
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # --- Custom message format you requested ---
+        # --- Custom message format (your requested style) ---
         final_text = (
             f"Click Here 👇 For \"{query.upper()}\"\n\n"
             f"🍿🎬 {query.upper()}\n"
-            f"🍿🎬 CLICK ME FOR RESULTS\n"
-            f"{reply_url}\n\n"
+            f"🍿🎬 CLICK ME FOR RESULTS\n\n"
             f"🎬 Watch & Download More Movies and Series Here 👇\n"
             f"🌐 https://filmy4uhd.vercel.app"
         )
@@ -117,23 +129,20 @@ async def pm_filter(c, m: t.Message):
             [
                 [
                     t.InlineKeyboardButton(
-                        "How to Download?",
-                        url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
+                        "📥 CLICK ME FOR RESULTS", url=reply_url
                     ),
                 ],
                 [
                     t.InlineKeyboardButton(
-                        "Request Movie",
-                        url=Config.REQUEST_MOVIE_URL,
+                        "🎬 Visit Filmy4uHD Site",
+                        url="https://filmy4uhd.vercel.app",
                     )
                 ],
             ]
-        ) if Config.RESULTS_HOW_TO_DOWNLOAD_LINK and Config.REQUEST_MOVIE_URL and is_private else None
+        )
 
         replied_link = await sts.edit(
-            final_text,
-            disable_web_page_preview=False,
-            reply_markup=reply_markup
+            final_text, disable_web_page_preview=False, reply_markup=reply_markup
         )
 
         if bool(auto_delete and auto_delete_time):
