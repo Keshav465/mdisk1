@@ -9,7 +9,7 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
-    
+
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
@@ -44,7 +44,7 @@ async def pm_filter(c, m: t.Message):
             shortener_site = group_info["shortener_site"]
 
         is_shortener = bool(shortener_api and shortener_site)
-        
+
         if is_shortener:
             database_channels = Config.DATABASE_CHANNEL
 
@@ -56,10 +56,10 @@ async def pm_filter(c, m: t.Message):
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("Some error occured")
+            await sts.edit("Some error occurred")
             return
 
-        template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
+        template = "<aside><b>{i}.🍿 {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
         bin_text = ""
         i = 1
         for result in results:
@@ -103,22 +103,23 @@ async def pm_filter(c, m: t.Message):
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # 🟢 Custom reply message format here
-        custom_text = f"""Click Here 👇 For "{query.upper()}"
+        # 🟢 Custom formatted message with Telegraph link
+        replied_link = await sts.edit(
+            """Click Here 👇 For "<a href='{url}'>{query}</a>"
 
-🍿🎬 {query.upper()}
-🍿🎬 <a href="{reply_url}">CLICK ME FOR RESULTS</a>
+🍿🎬 <a href='{url}'>{query}</a>
+🍿🎬 <a href='{url}'>CLICK ME FOR RESULTS</a>
 
 🎬 Watch & Download More Movies and Series Here 👇
 🌐 https://filmy4uhd.vercel.app
-"""
-
-        replied_link = await sts.edit(
-            custom_text,
+""".format(
+                query=query.upper(),
+                url=reply_url
+            ),
             disable_web_page_preview=0
         )
 
-        # Auto Delete if enabled
+        # 🕒 Auto Delete if enabled
         if bool(auto_delete and auto_delete_time):
             asyncio.create_task(auto_delete_func(replied_link, auto_delete_time))
 
