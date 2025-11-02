@@ -9,7 +9,7 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
-
+    
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
@@ -44,7 +44,7 @@ async def pm_filter(c, m: t.Message):
             shortener_site = group_info["shortener_site"]
 
         is_shortener = bool(shortener_api and shortener_site)
-
+        
         if is_shortener:
             database_channels = Config.DATABASE_CHANNEL
 
@@ -56,7 +56,7 @@ async def pm_filter(c, m: t.Message):
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("Some error occurred")
+            await sts.edit("Some error occured")
             return
 
         template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
@@ -64,10 +64,10 @@ async def pm_filter(c, m: t.Message):
         i = 1
         for result in results:
             result: t.Message
+
             text_ = result.text or result.caption
             title = text_.splitlines()[0]
             link = 0
-
             if free_group or is_shortener:
                 bot_username = c.username.replace("@", "")
                 link_temp = f"https://telegram.dog/{bot_username}?start=file_"
@@ -75,7 +75,6 @@ async def pm_filter(c, m: t.Message):
                 if result.document or result.video:
                     title = remove_mention(remove_link(title))
                     link = f"{link_temp}{result.id}_{result.chat.id}"
-
             elif result.photo or result.text:
                 link = result.link
 
@@ -104,33 +103,22 @@ async def pm_filter(c, m: t.Message):
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        reply_markup = t.InlineKeyboardMarkup(
-            [
-                [
-                    t.InlineKeyboardButton(
-                        "How to Download?",
-                        url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
-                    ),
-                ],
-                [
-                    t.InlineKeyboardButton(
-                        "Request Movie",
-                        url=Config.REQUEST_MOVIE_URL,
-                    )
-                ],
-            ]
-        ) if Config.RESULTS_HOW_TO_DOWNLOAD_LINK and Config.REQUEST_MOVIE_URL and is_private else None
+        # 🟢 Custom reply message format here
+        custom_text = f"""Click Here 👇 For "{query.upper()}"
 
-        # ✅ Custom final result message format
+🍿🎬 {query.upper()}
+🍿🎬 <a href="{reply_url}">CLICK ME FOR RESULTS</a>
+
+🎬 Watch & Download More Movies and Series Here 👇
+🌐 https://filmy4uhd.vercel.app
+"""
+
         replied_link = await sts.edit(
-            Script.RESULTS_MESSAGE.format(
-                query=query.upper(),
-                url=reply_url
-            ),
-            disable_web_page_preview=False,
-            reply_markup=reply_markup
+            custom_text,
+            disable_web_page_preview=0
         )
 
+        # Auto Delete if enabled
         if bool(auto_delete and auto_delete_time):
             asyncio.create_task(auto_delete_func(replied_link, auto_delete_time))
 
@@ -161,16 +149,3 @@ async def not_found_response(m, query):
         disable_web_page_preview=0,
         reply_markup=reply_markup,
     )
-
-
-# 🧾 Add or update this inside bot/config.py
-class Script:
-    RESULTS_MESSAGE = (
-        "Click Here 👇 For \"{query}\"\n\n"
-        "🍿🎬 {query}\n"
-        "🍿🎬 <a href='{url}'>CLICK ME FOR RESULTS</a>\n\n"
-        "🎬 Watch & Download More Movies and Series Here 👇\n"
-        "🌐 https://www.google.com/search?q=filmy4u.vercel.app"
-    )
-
-    NO_REPLY_TEXT = "❌ No results found for <b>{}</b>. Please check spelling or try again later."
