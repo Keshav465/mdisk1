@@ -35,7 +35,7 @@ async def pm_filter(c, m: t.Message):
 
         is_private = m.chat.type == enums.chat_type.ChatType.PRIVATE
 
-        database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site, force_sub_channel, force_sub = None, None, None, None, None, None, None
+        database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site = None, None, None, None, None
         if m.chat.type == enums.chat_type.ChatType.PRIVATE or free_group:
             database_channels = Config.DATABASE_CHANNEL
             auto_delete = Config.AUTO_DELETE
@@ -64,10 +64,18 @@ async def pm_filter(c, m: t.Message):
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("Some error occured")
+            await sts.edit("Some error occurred")
             return
 
-        template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
+        # 🌟 Same style and emoji maintained
+        template = """
+<aside>
+<b>{i}. 🍿 {title}</b><br>
+👉 <a href='{link}'>Click Here To Download 👈</a> | {id} 📦
+</aside>
+<hr>
+"""
+
         bin_text = ""
         i = 1
         for result in results:
@@ -105,14 +113,14 @@ async def pm_filter(c, m: t.Message):
         if is_shortener:
             bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
-        text = f"<h3>Results for {query}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
+        text = f"<h3>Results for {query.upper()}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
 
         soup = BeautifulSoup(text, "html.parser")
         formatted_text = soup.prettify()
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # 🔥 Updated message format with Telegraph link
+        # 🎬 Final Telegram message (with telegraph + emoji + site)
         custom_message = f'''
 Click Here 👇 For "{query.upper()}"
 
