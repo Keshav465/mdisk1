@@ -17,7 +17,7 @@ async def forcesub_handler(c: Client, m: types.Message):
 
 
 async def force_sub_func(c, channel_id, m):
-    owner = Config.OWNER_ID
+    owner = c.owner
     if not channel_id:
         return True
 
