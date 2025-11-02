@@ -3,7 +3,15 @@ import re
 from pyrogram import Client, filters, types as t, enums
 from bot.config import Config, Script
 from bs4 import BeautifulSoup
-from bot.utils import auto_delete_func, filter_chat, create_telegraph_post, is_premium_group, short_from_text, remove_link, remove_mention
+from bot.utils import (
+    auto_delete_func,
+    filter_chat,
+    create_telegraph_post,
+    is_premium_group,
+    short_from_text,
+    remove_link,
+    remove_mention
+)
 from bot.database import group_db
 
 
@@ -56,10 +64,10 @@ async def pm_filter(c, m: t.Message):
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("Some error occurred")
+            await sts.edit("Some error occured")
             return
 
-        template = "<aside><b>{i}.🍿 {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
+        template = "<aside><b>{i}. {title}</b><br><a href='{link}'>👉 Click Here To Download</a> | {id}</aside><hr>"
         bin_text = ""
         i = 1
         for result in results:
@@ -75,6 +83,7 @@ async def pm_filter(c, m: t.Message):
                 if result.document or result.video:
                     title = remove_mention(remove_link(title))
                     link = f"{link_temp}{result.id}_{result.chat.id}"
+
             elif result.photo or result.text:
                 link = result.link
 
@@ -103,23 +112,22 @@ async def pm_filter(c, m: t.Message):
 
         reply_url = await create_telegraph_post(query, formatted_text)
 
-        # 🟢 Custom formatted message with Telegraph link
-        replied_link = await sts.edit(
-            """Click Here 👇 For "<a href='{url}'>{query}</a>"
+        # 🔥 Updated message format with Telegraph link
+        custom_message = f'''
+Click Here 👇 For "{query.upper()}"
 
-🍿🎬 <a href='{url}'>{query}</a>
-🍿🎬 <a href='{url}'>CLICK ME FOR RESULTS</a>
+🍿🎬 <a href="{reply_url}">{query.upper()}</a>
+🍿🎬 <a href="{reply_url}">CLICK ME FOR RESULTS</a>
 
 🎬 Watch & Download More Movies and Series Here 👇
 🌐 https://filmy4uhd.vercel.app
-""".format(
-                query=query.upper(),
-                url=reply_url
-            ),
-            disable_web_page_preview=0
+'''
+
+        replied_link = await sts.edit(
+            custom_message,
+            disable_web_page_preview=True
         )
 
-        # 🕒 Auto Delete if enabled
         if bool(auto_delete and auto_delete_time):
             asyncio.create_task(auto_delete_func(replied_link, auto_delete_time))
 
