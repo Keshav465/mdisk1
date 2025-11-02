@@ -17,22 +17,19 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
-
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
         if await is_premium_group(chat_id):
             free_group = False
 
-    query = m.text
+    query = m.text.strip()
 
-    if m.text.startswith("/"):
-        return  # ignore commands
-    if re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", query):
+    # Ignore commands or emoji-only messages
+    if m.text.startswith("/") or re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", query):
         return
 
     if 2 < len(query) < 100:
-
         is_private = m.chat.type == enums.chat_type.ChatType.PRIVATE
 
         database_channels, auto_delete, auto_delete_time, shortener_api, shortener_site = None, None, None, None, None
@@ -59,19 +56,19 @@ async def pm_filter(c, m: t.Message):
         if not database_channels:
             return
 
-        sts = await m.reply("`Searching...`")
+        sts = await m.reply("`🔍 Searching your movie...`")
 
         try:
             results = await filter_chat(c, query, database_channels)
-        except Exception:
-            await sts.edit("Some error occurred")
+        except Exception as e:
+            await sts.edit(f"⚠️ Some error occurred: `{e}`")
             return
 
-        # 🌟 Same style and emoji maintained
+        # Template for each result
         template = """
 <aside>
 <b>{i}. 🍿 {title}</b><br>
-👉 <a href='{link}'>Click Here To Download 👈</a> | {id} 📦
+👉 <a href='{link}'>Click Here To Download 👈</a> | {size} 📦
 </aside>
 <hr>
 """
@@ -79,49 +76,53 @@ async def pm_filter(c, m: t.Message):
         bin_text = ""
         i = 1
         for result in results:
-            result: t.Message
-
-            text_ = result.text or result.caption
+            text_ = result.text or result.caption or ""
             title = text_.splitlines()[0]
-            link = 0
+
+            # Detect file size if available
+            size = "Unknown Size"
+            if result.document and result.document.file_size:
+                file_size = result.document.file_size / (1024 * 1024)  # in MB
+                size = f"{file_size/1024:.2f} GB" if file_size > 1024 else f"{file_size:.2f} MB"
+
+            # Generate download link
+            link = ""
             if free_group or is_shortener:
                 bot_username = c.username.replace("@", "")
-                link_temp = f"https://telegram.dog/{bot_username}?start=file_"
-                link = None
-                if result.document or result.video:
-                    title = remove_mention(remove_link(title))
-                    link = f"{link_temp}{result.id}_{result.chat.id}"
-
-            elif result.photo or result.text:
+                link = f"https://telegram.dog/{bot_username}?start=file_{result.id}_{result.chat.id}"
+            elif result.link:
                 link = result.link
 
-            temp = template.format(
-                i=i,
-                title=title,
-                link=link,
-                id=result.id
-            ) if link else None
-
-            if text_ := temp:
-                bin_text += text_
-                i += 1
+            temp = template.format(i=i, title=remove_mention(remove_link(title)), link=link, size=size)
+            bin_text += temp
+            i += 1
 
         if not bin_text:
             await not_found_response(sts, query)
             return
 
+        # Apply shortener if configured
         if is_shortener:
             bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
-        text = f"<h3>Results for {query.upper()}</h3><br><h4>Total results: {i-1}</h4><br><hr>{bin_text}"
-
-        soup = BeautifulSoup(text, "html.parser")
+        # Format telegraph post
+        html_content = f"""
+<h3>🍿 Results for {query.upper()}</h3>
+<h4>Total Results: {i-1}</h4>
+<hr>
+{bin_text}
+"""
+        soup = BeautifulSoup(html_content, "html.parser")
         formatted_text = soup.prettify()
 
-        reply_url = await create_telegraph_post(query, formatted_text)
+        try:
+            reply_url = await create_telegraph_post(query, formatted_text)
+        except Exception:
+            await sts.edit("❌ Failed to create Telegraph post.")
+            return
 
-        # 🎬 Final Telegram message (with telegraph + emoji + site)
-        custom_message = f'''
+        # Final formatted Telegram message
+        custom_message = f"""
 Click Here 👇 For "{query.upper()}"
 
 🍿🎬 <a href="{reply_url}">{query.upper()}</a>
@@ -129,17 +130,16 @@ Click Here 👇 For "{query.upper()}"
 
 🎬 Watch & Download More Movies and Series Here 👇
 🌐 https://filmy4uhd.vercel.app
-'''
+"""
 
         replied_link = await sts.edit(
             custom_message,
             disable_web_page_preview=True
         )
 
+        # Auto delete (if enabled)
         if bool(auto_delete and auto_delete_time):
             asyncio.create_task(auto_delete_func(replied_link, auto_delete_time))
-
-        return
 
 
 async def not_found_response(m, query):
@@ -148,13 +148,13 @@ async def not_found_response(m, query):
         [
             [
                 t.InlineKeyboardButton(
-                    "Check Release Date",
+                    "📅 Check Release Date",
                     url=f"https://www.google.com/search?q={reply}+movie+release+date",
                 ),
             ],
             [
                 t.InlineKeyboardButton(
-                    "🔍 Click to Check Spelling✅",
+                    "🔍 Check Spelling",
                     url=f"https://www.google.com/search?q={reply}+movie",
                 )
             ],
