@@ -25,10 +25,27 @@ async def pm_filter(c, m: t.Message):
 
     query = m.text.strip()
 
-    # Ignore commands or emoji-only messages
-    if m.text.startswith("/") or re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", query):
+    # 🚫 Ignore spam / links / adult / emoji-only messages
+    if (
+        not query
+        or "http" in query.lower()
+        or "www." in query.lower()
+        or "t.me" in query.lower()
+        or "sex" in query.lower()
+        or "🔞" in query
+        or "xnxx" in query.lower()
+        or "xvideos" in query.lower()
+        or "adult" in query.lower()
+        or m.text.startswith("/")
+        or re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", query)
+    ):
+        await m.reply_text(
+            "⚠️ Please avoid sending spam or adult links here.\n🔍 Send a valid movie or series name instead!",
+            quote=True
+        )
         return
 
+    # Proceed if message looks valid
     if 2 < len(query) < 100:
         is_private = m.chat.type == enums.chat_type.ChatType.PRIVATE
 
@@ -152,7 +169,6 @@ Click Here 👇 For "{query.upper()}"
             asyncio.create_task(auto_delete_func(replied_link, auto_delete_time))
 
 
-# 🧩 FIXED INDENTATION + RETURN HERE 👇
 async def not_found_response(m, query):
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
@@ -171,7 +187,6 @@ async def not_found_response(m, query):
             ],
         ]
     )
-
     return await m.edit(
         Script.NO_REPLY_TEXT.format(query),
         disable_web_page_preview=0,
