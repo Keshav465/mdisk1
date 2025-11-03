@@ -58,6 +58,11 @@ async def pm_filter(c, m: t.Message):
 
         sts = await m.reply("`🔍 Searching your movie...`")
 
+        # Prevent empty queries from crashing
+        if not query or not query.strip():
+            await sts.edit("⚠️ Please send a valid movie or series name to search.")
+            return
+
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception as e:
@@ -82,7 +87,7 @@ async def pm_filter(c, m: t.Message):
             # Detect file size if available
             size = "Unknown Size"
             if result.document and result.document.file_size:
-                file_size = result.document.file_size / (1024 * 1024)  # in MB
+                file_size = result.document.file_size / (1024 * 1024)  # MB
                 size = f"{file_size/1024:.2f} GB" if file_size > 1024 else f"{file_size:.2f} MB"
 
             # Generate download link
@@ -93,7 +98,12 @@ async def pm_filter(c, m: t.Message):
             elif result.link:
                 link = result.link
 
-            temp = template.format(i=i, title=remove_mention(remove_link(title)), link=link, size=size)
+            temp = template.format(
+                i=i,
+                title=remove_mention(remove_link(title)),
+                link=link,
+                size=size
+            )
             bin_text += temp
             i += 1
 
@@ -142,6 +152,7 @@ Click Here 👇 For "{query.upper()}"
             asyncio.create_task(auto_delete_func(replied_link, auto_delete_time))
 
 
+# 🧩 FIXED INDENTATION + RETURN HERE 👇
 async def not_found_response(m, query):
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
