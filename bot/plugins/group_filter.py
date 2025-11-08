@@ -17,7 +17,7 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
-
+    
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
@@ -27,7 +27,7 @@ async def pm_filter(c, m: t.Message):
     query = m.text
 
     if m.text.startswith("/"):
-        return
+        return  # ignore commands
     if re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", query):
         return
 
@@ -52,79 +52,96 @@ async def pm_filter(c, m: t.Message):
             shortener_site = group_info["shortener_site"]
 
         is_shortener = bool(shortener_api and shortener_site)
-
+        
         if is_shortener:
             database_channels = Config.DATABASE_CHANNEL
 
         if not database_channels:
             return
 
-        sts = await m.reply("🔎 Searching your movie... Please wait.")
+        sts = await m.reply("`ðŸ”Ž Searching... Please wait.`")
 
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("❌ Search failed\nPlease check the movie name and try again.")
+            await sts.edit("âš ï¸ Some error occurred while searching!")
             return
 
-        if not results:
-            await not_found_response(sts, query)
-            return
+        # ðŸŒŸ Movie Template (Emoji Style)
+        template = (
+            "<b>{i}. ðŸ¿ {title}</b><br>"
+            "ðŸ‘‰ <a href='{link}'>Click Here To Download ðŸ‘ˆ</a> | "
+            "ðŸ“¦ {size}<br><br>"
+        )
 
-        # 📄 Telegraph HTML (for instant view preview)
-        html_parts = [f"<h3>🎬 Results for <u>{query}</u></h3>", f"<h4>Total results: {len(results)}</h4><hr>"]
-
+        bin_text = ""
         i = 1
         for result in results:
             result: t.Message
             text_ = result.text or result.caption
             title = text_.splitlines()[0]
 
+            # ðŸ§¾ File size à¤¨à¤¿à¤•à¤¾à¤²à¤¨à¤¾
             if result.document:
-                size = f"{round(result.document.file_size / (1024 * 1024), 1)} MB"
+                file_size = f"{round(result.document.file_size / (1024 * 1024), 1)} MB"
                 if result.document.file_size >= 1024 * 1024 * 1024:
-                    size = f"{round(result.document.file_size / (1024 * 1024 * 1024), 1)} GB"
+                    file_size = f"{round(result.document.file_size / (1024 * 1024 * 1024), 1)} GB"
             elif result.video:
-                size = f"{round(result.video.file_size / (1024 * 1024), 1)} MB"
+                file_size = f"{round(result.video.file_size / (1024 * 1024), 1)} MB"
                 if result.video.file_size >= 1024 * 1024 * 1024:
-                    size = f"{round(result.video.file_size / (1024 * 1024 * 1024), 1)} GB"
+                    file_size = f"{round(result.video.file_size / (1024 * 1024 * 1024), 1)} GB"
             else:
-                size = "N/A"
+                file_size = "N/A"
 
-            link = f"https://telegram.dog/{c.username}?start=file_{result.id}_{result.chat.id}"
+            # ðŸ”— File Link à¤¬à¤¨à¤¾à¤¨à¤¾
+            link = None
+            if free_group or is_shortener:
+                bot_username = c.username.replace("@", "")
+                link_temp = f"https://telegram.dog/{bot_username}?start=file_"
+                if result.document or result.video:
+                    title = remove_mention(remove_link(title))
+                    link = f"{link_temp}{result.id}_{result.chat.id}"
+            elif result.photo or result.text:
+                link = result.link
 
-            html_parts.append(
-                f"""
-                <h4>{i}. 🍿 {title}</h4>
-                <p>
-                📦 Size: {size}<br>
-                👉 <a href="{link}">Click Here To Download  👇</a><br>
-                🔥 Watch latest HD Movies from <b>Filmy4uHD</b>
-                </p>
-                <hr>
-                """
-            )
-            i += 1
+            if link:
+                temp = template.format(
+                    i=i,
+                    title=title,
+                    link=link,
+                    size=file_size
+                )
+                bin_text += temp
+                i += 1
 
-        formatted_text = "\n".join(html_parts)
+        if not bin_text:
+            await not_found_response(sts, query)
+            return
 
-        # 📰 Telegraph Post with Filmy4uHD title
-        reply_url = await create_telegraph_post(
-            f"Filmy4uHD Search Bot - Page 1",
-            formatted_text
-        )
+        # ðŸ”— Shortener Integration
+        if is_shortener:
+            bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
 
+        text = f"<h3>ðŸŽ¬ Results for <u>{query}</u></h3><br><h4>Total results: {i-1}</h4><hr>{bin_text}"
+
+        soup = BeautifulSoup(text, "html.parser")
+        formatted_text = soup.prettify()
+
+        # ðŸ“° Telegraph Post à¤¬à¤¨à¤¾à¤¨à¤¾
+        reply_url = await create_telegraph_post(query, formatted_text)
+
+        # ðŸŽ› Inline Buttons
         reply_markup = t.InlineKeyboardMarkup(
             [
                 [
                     t.InlineKeyboardButton(
-                        "📺 How to Download?",
+                        "ðŸ“º How to Download?",
                         url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
                     ),
                 ],
                 [
                     t.InlineKeyboardButton(
-                        "🎥 Request Movie",
+                        "ðŸŽ¥ Request Movie",
                         url=Config.REQUEST_MOVIE_URL,
                     )
                 ],
@@ -136,7 +153,7 @@ async def pm_filter(c, m: t.Message):
                 query=query.upper(),
                 url=reply_url
             ),
-            disable_web_page_preview=0,
+            disable_web_page_preview=1,
             reply_markup=reply_markup
         )
 
@@ -146,20 +163,20 @@ async def pm_filter(c, m: t.Message):
         return
 
 
-# 🚫 Not Found Response
+# ðŸš« Not Found Response
 async def not_found_response(m, query):
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
         [
             [
                 t.InlineKeyboardButton(
-                    "📅 Check Release Date",
+                    "ðŸ“… Check Release Date",
                     url=f"https://www.google.com/search?q={reply}+movie+release+date",
                 ),
             ],
             [
                 t.InlineKeyboardButton(
-                    "🔍 Check Spelling",
+                    "ðŸ” Check Spelling",
                     url=f"https://www.google.com/search?q={reply}+movie",
                 )
             ],
@@ -167,7 +184,7 @@ async def not_found_response(m, query):
     )
 
     return await m.edit(
-        f"❌ No results found for <b>{query}</b>\nTry searching with correct name or year.",
+        Script.NO_REPLY_TEXT.format(query),
         disable_web_page_preview=0,
         reply_markup=reply_markup,
     )
