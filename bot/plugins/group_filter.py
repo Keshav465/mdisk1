@@ -17,14 +17,14 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
-    
+
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:
         chat_id = getattr(m.chat, "id", None)
         if await is_premium_group(chat_id):
             free_group = False
 
-    query = m.text.strip()
+    query = m.text
 
     if m.text.startswith("/"):
         return
@@ -59,103 +59,84 @@ async def pm_filter(c, m: t.Message):
         if not database_channels:
             return
 
-        sts = await m.reply("`🔍 Searching... Please wait.`")
+        sts = await m.reply("🔎 Searching your movie... Please wait.")
 
         try:
             results = await filter_chat(c, query, database_channels)
         except Exception:
-            await sts.edit("❌ Search failed\nPlease try again with correct spelling.")
+            await sts.edit("❌ Search failed\nPlease check the movie name and try again.")
             return
 
-        # 🎬 Filmy4uHD Style Template
-        template = (
-            "<b>{i}. 🍿 {title}</b><br>"
-            "👉 <a href='{link}'>Click Here To Download 👇</a> | "
-            "📦 {size}<br><br>"
-        )
+        if not results:
+            await not_found_response(sts, query)
+            return
 
-        bin_text = ""
+        # 📄 Telegraph HTML (for instant view preview)
+        html_parts = [f"<h3>🎬 Results for <u>{query}</u></h3>", f"<h4>Total results: {len(results)}</h4><hr>"]
+
         i = 1
         for result in results:
             result: t.Message
             text_ = result.text or result.caption
             title = text_.splitlines()[0]
 
-            # 📦 File size
             if result.document:
-                file_size = f"{round(result.document.file_size / (1024 * 1024), 1)} MB"
+                size = f"{round(result.document.file_size / (1024 * 1024), 1)} MB"
                 if result.document.file_size >= 1024 * 1024 * 1024:
-                    file_size = f"{round(result.document.file_size / (1024 * 1024 * 1024), 1)} GB"
+                    size = f"{round(result.document.file_size / (1024 * 1024 * 1024), 1)} GB"
             elif result.video:
-                file_size = f"{round(result.video.file_size / (1024 * 1024), 1)} MB"
+                size = f"{round(result.video.file_size / (1024 * 1024), 1)} MB"
                 if result.video.file_size >= 1024 * 1024 * 1024:
-                    file_size = f"{round(result.video.file_size / (1024 * 1024 * 1024), 1)} GB"
+                    size = f"{round(result.video.file_size / (1024 * 1024 * 1024), 1)} GB"
             else:
-                file_size = "N/A"
+                size = "N/A"
 
-            # 🔗 File Link
-            link = None
-            if free_group or is_shortener:
-                bot_username = c.username.replace("@", "")
-                link_temp = f"https://telegram.dog/{bot_username}?start=file_"
-                if result.document or result.video:
-                    title = remove_mention(remove_link(title))
-                    link = f"{link_temp}{result.id}_{result.chat.id}"
-            elif result.photo or result.text:
-                link = result.link
+            link = f"https://telegram.dog/{c.username}?start=file_{result.id}_{result.chat.id}"
 
-            if link:
-                temp = template.format(
-                    i=i,
-                    title=title,
-                    link=link,
-                    size=file_size
-                )
-                bin_text += temp
-                i += 1
+            html_parts.append(
+                f"""
+                <h4>{i}. 🍿 {title}</h4>
+                <p>
+                📦 Size: {size}<br>
+                👉 <a href="{link}">Click Here To Download 👇</a><br>
+                🔥 Watch latest HD Movies from <b>Filmy4uHD</b>
+                </p>
+                <hr>
+                """
+            )
+            i += 1
 
-        if not bin_text:
-            await not_found_response(sts, query)
-            return
+        formatted_text = "\n".join(html_parts)
 
-        # 🔗 Shortener
-        if is_shortener:
-            bin_text = await short_from_text(shortener_api, shortener_site, bin_text)
-
-        # 📄 Telegraph HTML text
-        text = (
-            f"<h3>🎬 Results for <u>{query}</u></h3>"
-            f"<h4>Total results: {i-1}</h4><hr>{bin_text}"
-        )
-
-        soup = BeautifulSoup(text, "html.parser")
-        formatted_text = soup.prettify()
-
-        # 📰 Telegraph Post Create (with custom title)
+        # 📰 Telegraph Post with Filmy4uHD title
         reply_url = await create_telegraph_post(
             f"Filmy4uHD Search Bot - Page 1",
             formatted_text
         )
 
-        # 🎛 Buttons
         reply_markup = t.InlineKeyboardMarkup(
             [
                 [
-                    t.InlineKeyboardButton("📺 How to Download?", url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK),
+                    t.InlineKeyboardButton(
+                        "📺 How to Download?",
+                        url=Config.RESULTS_HOW_TO_DOWNLOAD_LINK,
+                    ),
                 ],
                 [
-                    t.InlineKeyboardButton("🎥 Request Movie", url=Config.REQUEST_MOVIE_URL),
+                    t.InlineKeyboardButton(
+                        "🎥 Request Movie",
+                        url=Config.REQUEST_MOVIE_URL,
+                    )
                 ],
             ]
         ) if Config.RESULTS_HOW_TO_DOWNLOAD_LINK and Config.REQUEST_MOVIE_URL and is_private else None
 
-        # 📨 Final Reply
         replied_link = await sts.edit(
             Script.RESULTS_MESSAGE.format(
                 query=query.upper(),
                 url=reply_url
             ),
-            disable_web_page_preview=1,
+            disable_web_page_preview=0,
             reply_markup=reply_markup
         )
 
@@ -165,22 +146,28 @@ async def pm_filter(c, m: t.Message):
         return
 
 
-# ❌ Not Found Message
+# 🚫 Not Found Response
 async def not_found_response(m, query):
     reply = query.replace(" ", "+")
     reply_markup = t.InlineKeyboardMarkup(
         [
             [
-                t.InlineKeyboardButton("📅 Check Release Date", url=f"https://www.google.com/search?q={reply}+movie+release+date"),
+                t.InlineKeyboardButton(
+                    "📅 Check Release Date",
+                    url=f"https://www.google.com/search?q={reply}+movie+release+date",
+                ),
             ],
             [
-                t.InlineKeyboardButton("🔍 Check Spelling", url=f"https://www.google.com/search?q={reply}+movie"),
+                t.InlineKeyboardButton(
+                    "🔍 Check Spelling",
+                    url=f"https://www.google.com/search?q={reply}+movie",
+                )
             ],
         ]
     )
 
     return await m.edit(
-        f"❌ No results found for **{query}**.\nPlease check the spelling or try again later.",
+        f"❌ No results found for <b>{query}</b>\nTry searching with correct name or year.",
         disable_web_page_preview=0,
         reply_markup=reply_markup,
     )
