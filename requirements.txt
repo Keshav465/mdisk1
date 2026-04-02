@@ -11,3 +11,6 @@ aiofiles
 beautifulsoup4
 python-Levenshtein
 flask
+fastapi
+uvicorn
+jinja2

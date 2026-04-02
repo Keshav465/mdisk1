@@ -23,11 +23,20 @@ async def start(c: Bot, m: types.Message):
             chnl_msg = await c.get_messages(int(chat_id), int(file_id))
             caption = chnl_msg.caption
             caption = remove_mention(remove_link(caption))
-            btn = [[types.InlineKeyboardButton(
-                text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)]]
+            
+            # Watch/Download link
+            stream_url = f"{Config.URL}/watch/{file_id}_{chat_id}"
+            
+            btn = [
+                [
+                    types.InlineKeyboardButton(text="🚀 Fast Watch & Download", url=stream_url)
+                ],
+                [
+                    types.InlineKeyboardButton(text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)
+                ]
+            ]
 
-            reply_markup = types.InlineKeyboardMarkup(
-                btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else None
+            reply_markup = types.InlineKeyboardMarkup(btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text="🚀 Fast Watch & Download", url=stream_url)]])
             await chnl_msg.copy(m.from_user.id, caption, reply_markup=reply_markup)
         return
         
