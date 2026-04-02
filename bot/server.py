@@ -8,7 +8,6 @@ import os
 import math
 import mimetypes
 from pyrogram import Client
-from pyrogram.enums import MessageFilter
 import logging
 
 logger = logging.getLogger(__name__)
