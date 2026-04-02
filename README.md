@@ -1,81 +1,97 @@
+# 🎬 SDWB2 Premium Movie Bot
 
-# # Movie Bot
+A professional Telegram Movie Bot with **streaming**, **admin dashboard**, **TMDb integration**, and **auto-notifications**.
 
-Movie Bot is a Telegram Bot designed to help you find movies quickly and easily. It allows you to search for movies by name, and provides you with links to download them.
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/keshav6606/SDWB2)
 
-## Features
+---
 
-Movie Bot has a variety of features to help you find the perfect movie for you: 
+## ✨ Features
 
-- **Search**: Easily search for movies by name.
-- **Download**: Download movies directly from the bot.
-- **Validity**: Set a validity period for the movies you download, so that you can always keep them up to date.
-- **Auto-Delete**: Automatically delete movies after a set amount of time to keep your downloads organized.
-- **Shortener**: Shorten long download links for easy sharing.
-- **Help**: Get help from the bot with instructions on how to use it.
+| Feature | Description |
+|---|---|
+| 🔍 **Smart Search** | Fuzzy matching with "Latest First" sorting |
+| 🎬 **TMDb Integration** | Auto-fetch movie posters, ratings & plot |
+| 🎥 **Web Streaming** | Watch movies in browser or launch in VLC/MX Player |
+| 📊 **Admin Dashboard** | Manage users, groups & broadcast at `/dashboard` |
+| 🔔 **Auto-Notify** | DMs all users when a new movie is added |
+| 🔗 **Link Shortener** | Monetize search result links |
+| 🕐 **Auto Delete** | Cleans up search results automatically |
+| 🏆 **Premium Groups** | Subscription-based group access |
 
-## Commands
+---
+
+## 🚀 Quick Setup
+
+### Step 1 — Get a TMDb API Key (Free)
+1. Go to [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
+2. Create a free account and generate an API key
+3. Add it as `TMDB_API_KEY` in your environment variables
+
+### Step 2 — Generate Session String
+```bash
+pip install pyrogram tgcrypto
+python -c "from pyrogram import Client; Client('u', api_id=YOUR_ID, api_hash='YOUR_HASH').run()"
 ```
-/start - Used to start the bot.
-/help - get help regarding the bot.
-/about - get information about the bot.
-/fsub - check the status of fsub in a group.
-/set_fsub - set the force sub channel in a group. 
-/index - set a channel to index in a group.
-/auto_delete - check the status of auto delete in a group.
-/set_auto_delete - set the auto delete time in a group.
-/request - request access from the bot owner.
-/info - get information about a group.
-/set_api - set the API in a group.
-/api - get the API from a group.
-/remove_api - remove the API from a group.
+Copy the session string and add it as `SESSION_STRING`.
+
+### Step 3 — Set Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `BOT_TOKEN` | ✅ | From [@BotFather](https://t.me/BotFather) |
+| `API_ID` | ✅ | From [my.telegram.org](https://my.telegram.org) |
+| `API_HASH` | ✅ | From [my.telegram.org](https://my.telegram.org) |
+| `SESSION_STRING` | ✅ | Pyrogram user session |
+| `OWNER_ID` | ✅ | Your Telegram user ID |
+| `DATABASE_URL` | ✅ | MongoDB URI from [mongodb.com](https://mongodb.com) |
+| `DATABASE_CHANNEL` | ✅ | Channel ID(s) for file storage |
+| `LOG_CHANNEL` | ✅ | Channel ID for bot logs |
+| `URL` | ✅ | Your public deployment URL |
+| `ADMIN_PASSWORD` | ✅ | Password for `/dashboard` |
+| `BOT_USERNAME` | ✅ | Bot username without @ |
+| `TMDB_API_KEY` | ⬜ | For movie posters & ratings |
+| `SHORTENER_API` | ⬜ | Monetize links |
+| `SHORTENER_SITE` | ⬜ | Your shortener domain |
+| `AUTO_DELETE` | ⬜ | `True` or `False` |
+| `AUTO_DELETE_TIME` | ⬜ | Seconds (default: 300) |
+
+### Step 4 — Deploy on Render
+
+1. Fork this repository
+2. Go to [render.com](https://render.com) → New Web Service
+3. Connect your fork
+4. Set **Build Command**: `pip install -r requirements.txt`
+5. Set **Start Command**: `python3 -m bot`
+6. Add all environment variables from the table above
+7. Click **Deploy**
+
+---
+
+## 📖 Bot Commands
+
 ```
-## Setup
+/start      — Start the bot
+/help       — Get help
+/about      — About this bot
+/index      — Set indexed channel (group admins)
+/auto_delete — Toggle auto-delete (group admins)
+/set_auto_delete — Set auto-delete time (group admins)
+/set_api    — Set shortener API (group admins)
+/api        — View current shortener API
+/remove_api — Remove shortener API
+/info       — View group subscription info
+/request    — Request subscription from owner
+/fsub       — Check force-sub status
+```
 
-To get started, you'll need to set up some environment variables. These can be found in the following file:
+## 🌐 Web Portal
 
-Mandatory environment
+Once deployed, visit:
+- `https://your-url.com/` → Bot status
+- `https://your-url.com/dashboard` → Admin Dashboard
+- `https://your-url.com/watch/{id}_{chat_id}` → Movie player
 
- - `BOT_USERNAME`
- - `API_ID`
- - `API_HASH`
- - `BOT_TOKEN`
- - `DATABASE_URL`
- - `OWNER_ID`
- - `LOG_CHANNEL`
- - `DATABASE_CHANNEL`
- - `SESSION_STRING`
- - `VALIDITY`
+---
 
-Optional environment
-
- - `DATABASE_NAME`
- - `UPDATE_CHANNEL`
- - `ADMINS`
- - `BROADCAST_AS_COPY`
- - `WEB_SERVER`
- - `USERNAME`
- - `AUTO_DELETE`
- - `AUTO_DELETE_TIME`
- - `SHORTENER_API`
- - `SHORTENER_SITE`
- - `FILE_HOW_TO_DOWNLOAD_LINK`
- - `RESULTS_HOW_TO_DOWNLOAD_LINK`
- - `REQUEST_MOVIE_URL`
-
-
-Once these environment variables are set, you can start using Movie Bot.
-
-## Usage
-
-To use Movie Bot, simply type in the name of the movie you're looking for and the bot will search for it. It will provide you with links to download the movie, and you can also use the Shortener feature to shorten long download links.
-
-You can also use the bot to set a validity
-
-## Host Bot
-
-### Deploy to Heroku
-
-Click Below Button to Deploy to Heroku:
-
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/kdiskbot/SDWB2)
+Made with ❤️ by [@sdmoviespointes](https://t.me/sdmoviespointes)

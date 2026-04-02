@@ -1,56 +1,108 @@
 {
-    "name": "Bot",
-    "description": "Bot",
-    "keywords": ["telegram"],
-    "website": "",
-    "repository": "",
-    "env": {
-      "BOT_TOKEN": {
-        "description": "Your bot token from @botfather",
-        "value": ""
-      },
-      "API_ID": {
-        "description": "Get this value from https://my.telegram.org",
-        "value": ""
-      },
-      "API_HASH": {
-        "description": "Get this value from https://my.telegram.org",
-        "value": ""
-      },
-      "OWNER_ID": {
-        "description": "ID of the Bot Owner",
-        "value": "",
-        "required": true
-      },
-      "DATABASE_NAME": {
-        "description": "Name of the database",
-        "value": "",
-        "required": false
-      },
-      "DATABASE_URL": {
-        "description": "Your database URI from mongodb.com",
-        "value": "",
-        "required": true
-      },
-      "UPDATE_CHANNEL": {
-        "description": "Enter the id of the channel for force subscription. Leave blank to disable",
-        "value": "",
-        "required": false
-      },
-      "LOG_CHANNEL": {
-        "description": "Enter the id of the channel for logging.",
-        "value": ""
-      }
+  "name": "SDWB2 Movie Bot",
+  "description": "Premium Telegram Movie Bot with Streaming, Dashboard, and Auto-Notifications",
+  "keywords": ["telegram", "movie", "bot", "streaming"],
+  "website": "https://github.com/keshav6606/SDWB2",
+  "repository": "https://github.com/keshav6606/SDWB2",
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Your bot token from @BotFather",
+      "required": true
     },
-    "addons": [],
-    "buildpacks": [
-      {
-        "url": "heroku/python"
-      }
-    ],
-    "formation": {
-        "quantity": 1,
-        "size": "Eco"
+    "API_ID": {
+      "description": "Get from https://my.telegram.org",
+      "required": true
+    },
+    "API_HASH": {
+      "description": "Get from https://my.telegram.org",
+      "required": true
+    },
+    "SESSION_STRING": {
+      "description": "Pyrogram user session string (generate with gen_session.py)",
+      "required": true
+    },
+    "OWNER_ID": {
+      "description": "Telegram User ID of the bot owner",
+      "required": true
+    },
+    "DATABASE_URL": {
+      "description": "MongoDB connection URI from mongodb.com",
+      "required": true
+    },
+    "DATABASE_CHANNEL": {
+      "description": "Comma-separated channel IDs used as file database (e.g. -1001234567890)",
+      "required": true
+    },
+    "LOG_CHANNEL": {
+      "description": "Channel ID for bot logs",
+      "required": true
+    },
+    "URL": {
+      "description": "Your deployment public URL (e.g. https://my-bot.onrender.com)",
+      "required": true
+    },
+    "ADMIN_PASSWORD": {
+      "description": "Password for the admin dashboard at /dashboard",
+      "value": "admin123",
+      "required": true
+    },
+    "TMDB_API_KEY": {
+      "description": "TMDb API key for movie posters/ratings. Get free at https://www.themoviedb.org/settings/api",
+      "required": false
+    },
+    "BOT_USERNAME": {
+      "description": "Your bot username without @ (e.g. myMovieBot)",
+      "required": true
+    },
+    "DATABASE_NAME": {
+      "description": "MongoDB database name (default: bot username)",
+      "required": false
+    },
+    "UPDATE_CHANNEL": {
+      "description": "Username of your public update channel (e.g. sdmoviepointes)",
+      "value": "sdmoviepointes",
+      "required": false
+    },
+    "VALIDITY": {
+      "description": "Comma-separated validity periods in seconds for premium groups",
+      "value": "2592000,7776000,15552000",
+      "required": false
+    },
+    "AUTO_DELETE": {
+      "description": "Enable auto-delete for search results (True/False)",
+      "value": "True",
+      "required": false
+    },
+    "AUTO_DELETE_TIME": {
+      "description": "Auto-delete time in seconds",
+      "value": "300",
+      "required": false
+    },
+    "SHORTENER_API": {
+      "description": "Shortener API key for monetizing links (optional)",
+      "required": false
+    },
+    "SHORTENER_SITE": {
+      "description": "Shortener website domain (e.g. shareus.in)",
+      "required": false
+    },
+    "RESULTS_HOW_TO_DOWNLOAD_LINK": {
+      "description": "URL for How to Download guide shown in search results",
+      "required": false
+    },
+    "REQUEST_MOVIE_URL": {
+      "description": "URL for Request Movie button (e.g. your request channel link)",
+      "required": false
+    }
+  },
+  "addons": [],
+  "buildpacks": [
+    { "url": "heroku/python" }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "Eco"
     }
   }
-  
+}

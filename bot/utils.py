@@ -13,6 +13,37 @@ from difflib import SequenceMatcher
 from fuzzywuzzy import fuzz
 import aiohttp
 
+TMDB_BASE = "https://api.themoviedb.org/3"
+TMDB_IMG = "https://image.tmdb.org/t/p/w500"
+
+async def fetch_tmdb_metadata(title: str) -> dict:
+    """Fetch movie metadata (poster, rating, overview) from TMDb."""
+    if not Config.TMDB_API_KEY:
+        return {}
+    try:
+        clean = re.sub(r'[\(\)\[\]]', '', title)
+        clean = re.sub(r'\b(720p|1080p|4K|HDRip|BluRay|WEB-DL|x264|x265|HEVC|AAC|ESubs)\b', '', clean, flags=re.IGNORECASE).strip()
+        async with aiohttp.ClientSession() as session:
+            url = f"{TMDB_BASE}/search/movie?api_key={Config.TMDB_API_KEY}&query={clean}&language=en-US"
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return {}
+                data = await resp.json()
+                results = data.get("results", [])
+                if not results:
+                    return {}
+                movie = results[0]
+                return {
+                    "poster": f"{TMDB_IMG}{movie['poster_path']}" if movie.get('poster_path') else "",
+                    "rating": round(movie.get('vote_average', 0), 1),
+                    "overview": movie.get('overview', '')[:200],
+                    "year": movie.get('release_date', '')[:4],
+                    "title": movie.get('title', title),
+                }
+    except Exception:
+        return {}
+
+
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 

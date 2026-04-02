@@ -10,7 +10,7 @@ shortzy==0.0.8
 aiofiles
 beautifulsoup4
 python-Levenshtein
-flask
 fastapi
-uvicorn
+uvicorn[standard]
 jinja2
+requests

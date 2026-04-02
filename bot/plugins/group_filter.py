@@ -10,7 +10,8 @@ from bot.utils import (
     is_premium_group,
     short_from_text,
     remove_link,
-    remove_mention
+    remove_mention,
+    fetch_tmdb_metadata
 )
 from bot.database import group_db
 
@@ -67,9 +68,11 @@ async def pm_filter(c, m: t.Message):
             await sts.edit("⚠️ Some error occurred while searching!")
             return
 
-        # 🌟 Movie Template (Emoji Style)
+        # 🌟 Movie Template with TMDb poster support
         template = (
+            "{poster_html}"
             "<b>{i}. 🍿 {title}</b><br>"
+            "{rating_html}"
             "👉 <a href='{link}'>Click Here To Download 👈</a> | "
             "📦 {size}<br><br>"
         )
@@ -81,7 +84,7 @@ async def pm_filter(c, m: t.Message):
             text_ = result.text or result.caption
             title = text_.splitlines()[0]
 
-            # 🧾 File size निकालना
+            # 🧾 File size
             if result.document:
                 file_size = f"{round(result.document.file_size / (1024 * 1024), 1)} MB"
                 if result.document.file_size >= 1024 * 1024 * 1024:
@@ -93,7 +96,7 @@ async def pm_filter(c, m: t.Message):
             else:
                 file_size = "N/A"
 
-            # 🔗 File Link बनाना
+            # 🔗 File Link
             link = None
             if free_group or is_shortener:
                 bot_username = c.username.replace("@", "")
@@ -105,11 +108,19 @@ async def pm_filter(c, m: t.Message):
                 link = result.link
 
             if link:
+                # 🎬 Fetch TMDb metadata (poster + rating)
+                meta = await fetch_tmdb_metadata(title)
+                poster_html = f"<img src='{meta['poster']}' /><br>" if meta.get('poster') else ""
+                rating_html = f"⭐ {meta['rating']}/10 | {meta.get('year', '')} <br>" if meta.get('rating') else ""
+                display_title = meta.get('title', title) if meta else title
+
                 temp = template.format(
                     i=i,
-                    title=title,
+                    title=display_title,
                     link=link,
-                    size=file_size
+                    size=file_size,
+                    poster_html=poster_html,
+                    rating_html=rating_html,
                 )
                 bin_text += temp
                 i += 1

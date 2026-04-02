@@ -62,6 +62,7 @@ class Config(object):
     TELEGRAM_JPEG = "https://www.trustedreviews.com/wp-content/uploads/sites/54/2018/01/Telegram-920x518.jpg"
     URL = os.environ.get("URL", "http://localhost:8080")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
+    TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
 
 
 class Script(object):
