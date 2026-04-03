@@ -90,7 +90,7 @@ Copy the session string and add it as `SESSION_STRING`.
 Once deployed, visit:
 - `https://your-url.com/` → Bot status
 - `https://your-url.com/dashboard` → Admin Dashboard
-- `https://your-url.com/watch/{id}_{chat_id}` → Movie player
+- `https://your-url.com/w/{token}` → Secure Movie player
 
 ---
 

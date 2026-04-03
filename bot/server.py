@@ -6,6 +6,7 @@ import os
 import mimetypes
 from pyrogram import Client
 import logging
+from bot.utils import decode_movie_token
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class MediaStreamer:
             content_length = end - start + 1
 
             async def generate():
-                async for chunk in self.client.stream_media(message, offset=start, limit=content_length):
+                async for chunk in self.client.USER.stream_media(message, offset=start, limit=content_length):
                     yield chunk
 
             is_download = "download" in request.query_params
@@ -98,14 +99,13 @@ async def dashboard(request: Request):
         return HTMLResponse(f"<h3>Dashboard Error: {e}</h3>")
 
 
-@app.get("/watch/{slug}", response_class=HTMLResponse)
-async def watch_page(request: Request, slug: str):
+@app.get("/w/{token}", response_class=HTMLResponse)
+async def watch_page(request: Request, token: str):
     try:
-        # Parse slug: format is "{file_id}_{chat_id}"
-        # chat_id can be negative, e.g. "3132382_-1002740721681"
-        underscore_idx = slug.index("_")
-        file_id = int(slug[:underscore_idx])
-        chat_id = int(slug[underscore_idx + 1:])
+        # Decode the secure token
+        file_id, chat_id = decode_movie_token(token)
+        if not file_id or not chat_id:
+            return HTMLResponse("<h3>❌ Invalid or Expired Link</h3>", status_code=403)
 
         message = await streamer.client.get_messages(chat_id, file_id)
         if not message or not (message.video or message.document):
@@ -122,10 +122,11 @@ async def watch_page(request: Request, slug: str):
         else:
             size = f"{file_size} B"
 
-        stream_url = f"{Config.URL}/stream/{slug}"
+        stream_url = f"{Config.URL}/s/{token}"
         download_url = f"{stream_url}?download=1"
         vlc_url = f"vlc://{stream_url.replace('https://', '').replace('http://', '')}"
         mx_url = f"intent:{stream_url}#Intent;package=com.mxtech.videoplayer.ad;S.title={file_name};end"
+        next_url = f"intent://{stream_url.replace('https://', '').replace('http://', '')}#Intent;scheme=https;package=dev.anilbeesetti.nextplayer;S.title={file_name};end"
 
         # Try TMDb metadata (optional — won't crash if fails)
         poster = rating = overview = year = ""
@@ -145,7 +146,7 @@ async def watch_page(request: Request, slug: str):
         html = _build_watch_html(
             title=file_name, size=size, poster=poster, rating=rating,
             overview=overview, year=year, stream_url=stream_url,
-            download_url=download_url, vlc_url=vlc_url, mx_url=mx_url
+            download_url=download_url, vlc_url=vlc_url, mx_url=mx_url, next_url=next_url
         )
         return HTMLResponse(html)
 
@@ -156,7 +157,7 @@ async def watch_page(request: Request, slug: str):
 
 
 def _build_watch_html(title, size, poster, rating, overview, year,
-                      stream_url, download_url, vlc_url, mx_url):
+                      stream_url, download_url, vlc_url, mx_url, next_url):
     poster_html = f'<img class="poster" src="{poster}" alt="{title}"/>' if poster else '<div class="poster-ph">🎬</div>'
     rating_html = f'<span class="tag tag-y">⭐ {rating}/10</span>' if rating else ''
     year_html   = f'<span class="tag tag-b">🗓 {year}</span>' if year else ''
@@ -225,8 +226,9 @@ def _build_watch_html(title, size, poster, rating, overview, year,
   </div>
   <div class="actions">
     <a href="{download_url}" class="btn btn-p" download>📥 Download</a>
-    <a href="{vlc_url}" class="btn btn-o" target="_blank">🧡 Open in VLC</a>
+    <a href="{vlc_url}" class="btn btn-o" target="_blank">🧡 VLC</a>
     <a href="{mx_url}" class="btn btn-o" target="_blank">💚 MX Player</a>
+    <a href="{next_url}" class="btn btn-o" target="_blank">💙 Next Player</a>
   </div>
   <footer>Powered by SDWB2 · High-Speed Telegram Streaming</footer>
 </div>
@@ -235,15 +237,15 @@ def _build_watch_html(title, size, poster, rating, overview, year,
 </body></html>"""
 
 
-@app.get("/stream/{slug}")
-async def stream_file(request: Request, slug: str):
+@app.get("/s/{token}")
+async def stream_file(request: Request, token: str):
     try:
-        underscore_idx = slug.index("_")
-        file_id = int(slug[:underscore_idx])
-        chat_id = int(slug[underscore_idx + 1:])
+        file_id, chat_id = decode_movie_token(token)
+        if not file_id or not chat_id:
+            raise HTTPException(status_code=403, detail="Invalid token")
         return await streamer.get_stream(chat_id, file_id, request)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Bad slug: {e}")
+        raise HTTPException(status_code=400, detail=f"Streaming error: {e}")
 
 
 # ── Admin API ─────────────────────────────────────────────────────────────────

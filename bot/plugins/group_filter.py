@@ -11,7 +11,8 @@ from bot.utils import (
     short_from_text,
     remove_link,
     remove_mention,
-    fetch_tmdb_metadata
+    fetch_tmdb_metadata,
+    encode_movie_token
 )
 from bot.database import group_db
 
@@ -114,10 +115,14 @@ async def pm_filter(c, m: t.Message):
                 rating_html = f"⭐ {meta['rating']}/10 | {meta.get('year', '')} <br>" if meta.get('rating') else ""
                 display_title = meta.get('title', title) if meta else title
 
+                # 🔗 Token-based link for Telegraph
+                token = encode_movie_token(result.id, result.chat.id)
+                stream_url = f"{Config.URL}/w/{token}"
+
                 temp = template.format(
                     i=i,
                     title=display_title,
-                    link=link,
+                    link=stream_url,
                     size=file_size,
                     poster_html=poster_html,
                     rating_html=rating_html,

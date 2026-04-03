@@ -1,7 +1,7 @@
 from pyrogram import Client, filters, types, enums
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
-from bot.utils import get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention
+from bot.utils import encode_movie_token, get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention
 from bot.database import group_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
@@ -24,8 +24,9 @@ async def start(c: Bot, m: types.Message):
             caption = chnl_msg.caption
             caption = remove_mention(remove_link(caption))
             
-            # Watch/Download link
-            stream_url = f"{Config.URL}/watch/{file_id}_{chat_id}"
+            # Watch/Download link (Token-based)
+            token = encode_movie_token(int(file_id), int(chat_id))
+            stream_url = f"{Config.URL}/w/{token}"
             
             btn = [
                 [
@@ -53,6 +54,13 @@ async def start(c: Bot, m: types.Message):
     await m.reply_text(
         Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup
     )
+
+
+@Client.on_message(filters.command("notify") & filters.private & filters.user(Config.ADMINS))
+async def toggle_notify(c: Client, m: types.Message):
+    Config.AUTO_NOTIFICATION = not Config.AUTO_NOTIFICATION
+    status = "Enabled" if Config.AUTO_NOTIFICATION else "Disabled"
+    await m.reply_text(f"🚀 Automatic notifications for new updates are now **{status}**.")
 
 
 @Client.on_message(filters.command("help") & filters.private & filters.incoming)

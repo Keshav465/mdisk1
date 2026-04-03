@@ -12,6 +12,8 @@ async def auto_notify_handler(c: Client, m: types.Message):
     """
     Automatically notifies all users when a new movie is added to the database channel.
     """
+    if not Config.AUTO_NOTIFICATION:
+        return
     
     # 1. Extract Details
     text = m.caption or m.text or "New Movie Added"

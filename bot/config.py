@@ -63,6 +63,8 @@ class Config(object):
     URL = os.environ.get("URL", "http://localhost:8080")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
     TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
+    SECRET_KEY = os.environ.get("SECRET_KEY", BOT_TOKEN)
+    AUTO_NOTIFICATION = is_enabled(os.environ.get("AUTO_NOTIFICATION", "True"), True)
 
 
 class Script(object):

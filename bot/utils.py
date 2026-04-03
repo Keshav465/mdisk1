@@ -12,9 +12,26 @@ from shortzy import Shortzy
 from difflib import SequenceMatcher
 from fuzzywuzzy import fuzz
 import aiohttp
+from itsdangerous import URLSafeSerializer
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMG = "https://image.tmdb.org/t/p/w500"
+
+def encode_movie_token(file_id: int, chat_id: int) -> str:
+    """Generate a signed, URL-safe token for movie access."""
+    s = URLSafeSerializer(Config.SECRET_KEY)
+    return s.dumps([file_id, chat_id])
+
+def decode_movie_token(token: str):
+    """Validate and decode a movie token."""
+    s = URLSafeSerializer(Config.SECRET_KEY)
+    try:
+        data = s.loads(token)
+        if isinstance(data, list) and len(data) == 2:
+            return int(data[0]), int(data[1])
+    except Exception:
+        pass
+    return None, None
 
 async def fetch_tmdb_metadata(title: str) -> dict:
     """Fetch movie metadata (poster, rating, overview) from TMDb."""
