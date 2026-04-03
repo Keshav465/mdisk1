@@ -6,6 +6,7 @@ import os
 import mimetypes
 from pyrogram import Client
 import logging
+import asyncio
 from bot.utils import decode_movie_token
 from contextlib import asynccontextmanager
 from bot.bot_client import Bot
@@ -17,14 +18,17 @@ async def lifespan(app: FastAPI):
     # ── Startup ──
     global bot, streamer
     bot = Bot()
-    await bot.start()
+    
+    # 🔥 Start Bot in background so the web server binds instantly
+    asyncio.create_task(bot.start())
+    
     streamer = MediaStreamer(bot)
     
     # 📝 Start Reminder Loop
     from bot.plugins.user_reminders import reminder_loop
     asyncio.create_task(reminder_loop(bot))
     
-    logger.info("Bot & Web server linked successfully ✅")
+    logger.info("Web server successfully bound to port! ✅")
     yield
     # ── Shutdown ──
     await bot.stop()
