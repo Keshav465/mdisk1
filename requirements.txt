@@ -15,3 +15,6 @@ starlette==0.37.2
 uvicorn[standard]
 jinja2
 requests
+itsdangerous
+uvloop
+python-multipart

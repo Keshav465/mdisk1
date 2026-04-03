@@ -26,4 +26,9 @@ async def main():
     await server.serve()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        logger.error(f"Critical error on startup: {e}", exc_info=True)
+        import sys
+        sys.exit(1)
