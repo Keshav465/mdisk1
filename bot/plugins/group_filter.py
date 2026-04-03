@@ -115,14 +115,14 @@ async def pm_filter(c, m: t.Message):
                 rating_html = f"⭐ {meta['rating']}/10 | {meta.get('year', '')} <br>" if meta.get('rating') else ""
                 display_title = meta.get('title', title) if meta else title
 
-                # 🔗 Token-based link for Telegraph
-                token = encode_movie_token(result.id, result.chat.id)
-                stream_url = f"{Config.URL}/w/{token}"
+                # 🔗 Telegram Bot Deep Link for Telegraph
+                bot_username = c.me.username
+                bot_link = f"https://t.me/{bot_username}?start=file_{result.id}_{result.chat.id}"
 
                 temp = template.format(
                     i=i,
                     title=display_title,
-                    link=stream_url,
+                    link=bot_link,
                     size=file_size,
                     poster_html=poster_html,
                     rating_html=rating_html,

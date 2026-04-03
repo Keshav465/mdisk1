@@ -21,7 +21,11 @@ async def start(c: Bot, m: types.Message):
             _, file_id, chat_id = m.command[1].split("_")
 
             chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-            caption = chnl_msg.caption
+            if not chnl_msg or not (chnl_msg.document or chnl_msg.video):
+                await m.reply_text("❌ File not found or invalid link.")
+                return
+
+            caption = (chnl_msg.caption or "").strip()
             caption = remove_mention(remove_link(caption))
             
             # Watch/Download link (Token-based)
@@ -33,12 +37,11 @@ async def start(c: Bot, m: types.Message):
                     types.InlineKeyboardButton(text="🚀 Fast Watch & Download", url=stream_url)
                 ],
                 [
-                    types.InlineKeyboardButton(text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)
+                    types.InlineKeyboardButton(text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK or "https://t.me/sdmoviepointes")
                 ]
             ]
-
-            reply_markup = types.InlineKeyboardMarkup(btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text="🚀 Fast Watch & Download", url=stream_url)]])
-            await chnl_msg.copy(m.from_user.id, caption, reply_markup=reply_markup)
+            
+            await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))
         return
         
     markup = types.InlineKeyboardMarkup(
