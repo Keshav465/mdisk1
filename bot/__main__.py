@@ -8,27 +8,20 @@ from bot.server import app, set_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def main():
-    bot = Bot()
-    await bot.start()
-    set_client(bot)
-    logger.info("Bot started. Launching web server...")
-
+def main():
     port = int(os.environ.get("PORT", 8080))
-    config = uvicorn.Config(
-        app,
+    logger.info(f"🚀 Starting web server on port {port}...")
+    uvicorn.run(
+        "bot.server:app",
         host="0.0.0.0",
         port=port,
-        log_level="warning"
+        log_level="info"
     )
-    server = uvicorn.Server(config)
-    # Run both bot idle and web server concurrently
-    await server.serve()
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except Exception as e:
-        logger.error(f"Critical error on startup: {e}", exc_info=True)
+        logger.error(f"Critical error: {e}", exc_info=True)
         import sys
         sys.exit(1)

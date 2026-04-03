@@ -7,10 +7,24 @@ import mimetypes
 from pyrogram import Client
 import logging
 from bot.utils import decode_movie_token
+from contextlib import asynccontextmanager
+from bot.bot_client import Bot
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="SDWB2 Movie Bot API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──
+    global bot, streamer
+    bot = Bot()
+    await bot.start()
+    streamer = MediaStreamer(bot)
+    logger.info("Bot & Web server linked successfully ✅")
+    yield
+    # ── Shutdown ──
+    await bot.stop()
+
+app = FastAPI(title="SDWB2 Movie Bot API", lifespan=lifespan)
 os.makedirs("bot/templates", exist_ok=True)
 templates = Jinja2Templates(directory="bot/templates")
 
@@ -68,12 +82,8 @@ class MediaStreamer:
             raise HTTPException(status_code=500, detail=str(e))
 
 
+bot: Bot = None
 streamer: MediaStreamer = None
-
-
-def set_client(client: Client):
-    global streamer
-    streamer = MediaStreamer(client)
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────

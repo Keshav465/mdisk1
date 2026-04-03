@@ -3,7 +3,7 @@ from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
 from bot.utils import encode_movie_token, get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention
 from bot.database import group_db
-from bot import Bot
+from bot.bot_client import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 
 
