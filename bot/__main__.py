@@ -1,9 +1,7 @@
 import os
-import asyncio
 import uvicorn
 import logging
-from bot import Bot
-from bot.server import app, set_client
+from bot.server import app
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
