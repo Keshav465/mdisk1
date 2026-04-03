@@ -10,11 +10,4 @@ shortzy==0.0.8
 aiofiles
 beautifulsoup4
 python-Levenshtein
-fastapi==0.111.0
-starlette==0.37.2
-uvicorn[standard]
-jinja2
-requests
-itsdangerous
-uvloop
-python-multipart
+flask

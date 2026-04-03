@@ -12,54 +12,6 @@ from shortzy import Shortzy
 from difflib import SequenceMatcher
 from fuzzywuzzy import fuzz
 import aiohttp
-from itsdangerous import URLSafeSerializer
-
-TMDB_BASE = "https://api.themoviedb.org/3"
-TMDB_IMG = "https://image.tmdb.org/t/p/w500"
-
-def encode_movie_token(file_id: int, chat_id: int) -> str:
-    """Generate a signed, URL-safe token for movie access."""
-    s = URLSafeSerializer(Config.SECRET_KEY)
-    return s.dumps([file_id, chat_id])
-
-def decode_movie_token(token: str):
-    """Validate and decode a movie token."""
-    s = URLSafeSerializer(Config.SECRET_KEY)
-    try:
-        data = s.loads(token)
-        if isinstance(data, list) and len(data) == 2:
-            return int(data[0]), int(data[1])
-    except Exception:
-        pass
-    return None, None
-
-async def fetch_tmdb_metadata(title: str) -> dict:
-    """Fetch movie metadata (poster, rating, overview) from TMDb."""
-    if not Config.TMDB_API_KEY:
-        return {}
-    try:
-        clean = re.sub(r'[\(\)\[\]]', '', title)
-        clean = re.sub(r'\b(720p|1080p|4K|HDRip|BluRay|WEB-DL|x264|x265|HEVC|AAC|ESubs)\b', '', clean, flags=re.IGNORECASE).strip()
-        async with aiohttp.ClientSession() as session:
-            url = f"{TMDB_BASE}/search/movie?api_key={Config.TMDB_API_KEY}&query={clean}&language=en-US"
-            async with session.get(url) as resp:
-                if resp.status != 200:
-                    return {}
-                data = await resp.json()
-                results = data.get("results", [])
-                if not results:
-                    return {}
-                movie = results[0]
-                return {
-                    "poster": f"{TMDB_IMG}{movie['poster_path']}" if movie.get('poster_path') else "",
-                    "rating": round(movie.get('vote_average', 0), 1),
-                    "overview": movie.get('overview', '')[:200],
-                    "year": movie.get('release_date', '')[:4],
-                    "title": movie.get('title', title),
-                }
-    except Exception:
-        return {}
-
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -79,27 +31,21 @@ INTERVALS = OrderedDict([
 
 
 async def filter_chat(c: Bot, query, chat_id_list=Config.DATABASE_CHANNEL, offset=0, filter: enums.MessagesFilter = enums.MessagesFilter.EMPTY, num_results=Config.LIMIT):
+    search_results = []
+    raw_search_results = []
+    query_list = query.split()
     results = []
 
-    # Get a specific query list for multi-word searches
-    query_list = query.split()
+    for q in query_list:
+        for chat_id in chat_id_list:
+            async for message in c.USER.search_messages(chat_id, query=q, offset=offset, filter=filter, limit=Config.LIMIT):
+                if message.text or message.caption:
+                    text = message.text or message.caption
+                    file_name = text.splitlines()[0].lower()
+                    ratio = fuzz.token_set_ratio(query, file_name)
+                    results.append((message, ratio))
     
-    for chat_id in chat_id_list:
-        async for message in c.USER.search_messages(chat_id, query=query, offset=offset, filter=filter, limit=Config.LIMIT):
-            if message.text or message.caption:
-                text = message.text or message.caption
-                file_name = text.splitlines()[0].lower()
-                
-                # Use a combined ratio for better accuracy
-                # token_set_ratio is great for partial matches, but we want to weigh message.id too
-                ratio = fuzz.token_set_ratio(query.lower(), file_name)
-                
-                if ratio >= 60: # Threshold for basic relevance
-                    results.append((message, ratio, message.id))
-    
-    # Sort first by ratio (relevance) then by message.id (latest first)
-    results.sort(key=lambda x: (x[1], x[2]), reverse=True)
-    
+    results.sort(key=lambda x: x[1], reverse=True)
     return [r[0] for r in results[:num_results]]
 
 

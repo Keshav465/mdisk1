@@ -1,16 +1,14 @@
 from pyrogram import Client, filters, types, enums
 from bot.config import Config, Script
 from bot.plugins.reminder import main_reminder_handler
-from bot.utils import encode_movie_token, get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention
+from bot.utils import get_group_info_button, get_group_info_text, group_admin_check, group_wrapper, is_bot_admin, is_int, is_premium_group, remove_link, remove_mention
 from bot.database import group_db
-from bot.bot_client import Bot
+from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 
 
 @Client.on_message(filters.command("start") & (filters.private | filters.group) & filters.incoming)
 async def start(c: Bot, m: types.Message):
-    from bot.database import user_db
-    await user_db.update_activity(m.from_user.id)
     
     if len(m.command) == 2:
         if "help" in m.command:
@@ -23,27 +21,14 @@ async def start(c: Bot, m: types.Message):
             _, file_id, chat_id = m.command[1].split("_")
 
             chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-            if not chnl_msg or not (chnl_msg.document or chnl_msg.video):
-                await m.reply_text("❌ File not found or invalid link.")
-                return
-
-            caption = (chnl_msg.caption or "").strip()
+            caption = chnl_msg.caption
             caption = remove_mention(remove_link(caption))
-            
-            # Watch/Download link (Token-based)
-            token = encode_movie_token(int(file_id), int(chat_id))
-            stream_url = f"{Config.URL}/w/{token}"
-            
-            btn = [
-                [
-                    types.InlineKeyboardButton(text="🚀 Fast Watch & Download", url=stream_url)
-                ],
-                [
-                    types.InlineKeyboardButton(text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK or "https://t.me/sdmoviepointes")
-                ]
-            ]
-            
-            await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))
+            btn = [[types.InlineKeyboardButton(
+                text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)]]
+
+            reply_markup = types.InlineKeyboardMarkup(
+                btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else None
+            await chnl_msg.copy(m.from_user.id, caption, reply_markup=reply_markup)
         return
         
     markup = types.InlineKeyboardMarkup(
@@ -59,13 +44,6 @@ async def start(c: Bot, m: types.Message):
     await m.reply_text(
         Script.START_MESSAGE, disable_web_page_preview=True, reply_markup=markup
     )
-
-
-@Client.on_message(filters.command("notify") & filters.private & filters.user(Config.ADMINS))
-async def toggle_notify(c: Client, m: types.Message):
-    Config.AUTO_NOTIFICATION = not Config.AUTO_NOTIFICATION
-    status = "Enabled" if Config.AUTO_NOTIFICATION else "Disabled"
-    await m.reply_text(f"🚀 Automatic notifications for new updates are now **{status}**.")
 
 
 @Client.on_message(filters.command("help") & filters.private & filters.incoming)
