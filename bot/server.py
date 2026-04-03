@@ -19,6 +19,11 @@ async def lifespan(app: FastAPI):
     bot = Bot()
     await bot.start()
     streamer = MediaStreamer(bot)
+    
+    # 📝 Start Reminder Loop
+    from bot.plugins.user_reminders import reminder_loop
+    asyncio.create_task(reminder_loop(bot))
+    
     logger.info("Bot & Web server linked successfully ✅")
     yield
     # ── Shutdown ──

@@ -19,6 +19,8 @@ from bot.database import group_db
 
 @Client.on_message(filters.text & (filters.private | filters.group) & filters.incoming)
 async def pm_filter(c, m: t.Message):
+    from bot.database import user_db
+    await user_db.update_activity(m.from_user.id)
     
     free_group = True
     if m.chat.type in [enums.chat_type.ChatType.SUPERGROUP, enums.chat_type.ChatType.GROUP]:

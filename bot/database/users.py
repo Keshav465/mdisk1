@@ -12,13 +12,32 @@ class Database:
         user_id = int(user_id)
         user = await self.users.find_one({"user_id": user_id})
         if not user:
+            from datetime import datetime
             res = {
                 "user_id": user_id,
                 "banned": False,
+                "last_active": datetime.now(),
+                "reminders_enabled": True
             }
             await self.users.insert_one(res)
             user = await self.users.find_one({"user_id": user_id})
         return user
+
+    async def update_activity(self, user_id):
+        from datetime import datetime
+        await self.users.update_one(
+            {"user_id": int(user_id)},
+            {"$set": {"last_active": datetime.now()}}
+        )
+
+    async def get_inactive_users(self, threshold_days):
+        from datetime import datetime, timedelta
+        threshold_date = datetime.now() - timedelta(days=threshold_days)
+        return self.users.find({
+            "last_active": {"$lt": threshold_date},
+            "banned": False,
+            "reminders_enabled": {"$ne": False}
+        })
 
     async def update_user(self, user_id, value):
         myquery = {

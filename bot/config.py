@@ -65,6 +65,7 @@ class Config(object):
     TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
     SECRET_KEY = os.environ.get("SECRET_KEY", BOT_TOKEN)
     AUTO_NOTIFICATION = is_enabled(os.environ.get("AUTO_NOTIFICATION", "False"), False)
+    REMINDER_THRESHOLD = int(os.environ.get("REMINDER_THRESHOLD", 7))
 
 
 class Script(object):
@@ -125,3 +126,9 @@ Details:
 
 🍿🎬 [{query}]({url})
 🍿🎬 [CLICK ME FOR RESULTS]({url})"""
+
+    REMINDER_MSG = """🎬 **We miss you!**
+
+It's been a while since you last searched for a movie. Looking for something specific? 
+
+Search for any movie now and start watching/downloading in high speed! 🚀"""
