@@ -27,6 +27,8 @@ class Config(object):
     )
     DATABASE_NAME = os.environ.get("DATABASE_NAME", BOT_USERNAME)
     DATABASE_URL = os.environ.get("DATABASE_URL", None)
+    PORT = int(os.environ.get("PORT", "8080"))
+    BASE_URL = os.environ.get("BASE_URL", "https://mdisk1-saxw.onrender.com")
     OWNER_ID = int(os.environ.get("OWNER_ID", "7434248892"))  # id of the owner
     ADMINS.append(OWNER_ID) if OWNER_ID not in ADMINS else []
 
@@ -56,6 +58,8 @@ class Config(object):
 
     VALIDITY = [int(i.strip()) for i in os.environ.get("VALIDITY").split(",")] if os.environ.get("VALIDITY") else [999999999,]
     SESSION_STRING = os.environ.get("SESSION_STRING")
+    TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "6abcb6bb99fb77f33c37016a28866ed2")
+    IMDB_API_URL = os.environ.get("IMDB_API_URL", "https://imdbapi.kr562481.workers.dev")
 
     TELEGRAPH_ACCESS_TOKEN = ['736edc901bb2b8b2787202f8519c4e652078784b316074fafbedfb26bc4d', '1fec664c2752da714492603b494b674e6b449829f27889ed46eb7144b11d', '5c09ffdb75ae522d166ee8679c4f0c44fa1664a1aeadb8697fa576604529', '4af0b3d57894a30c1b54194610569a412e1b5e508f216de40338b187843d', 'fecb697ba28fcfc1c14f758a756960ee62c1453c43440f419e3d5d24a98c', 'c8d9b088a0741b44c3b4a10f1923cd6e61c3bee8c628831db1d9ee890b62', '2d9d53e97172ec4512b2560e8123f1ec1212b81fc7b031ed04df96d0dbdd', '3c7afee76adc4f59091cf512c18c8b02160916bcdbf0d421f75d61ff39c4', '51291c987f8326f11c439cba714a08c8f61c49d5734052eccc209bd51901', '181e86d07630b24915f00801ebc79dfb0e15fa41c8daf63299ac068c60fd']
     

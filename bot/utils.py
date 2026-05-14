@@ -64,6 +64,15 @@ async def create_telegraph_post(title, content):
     )
     return response['url']
 
+async def edit_telegraph_post(path, title, content):
+    telegraph = Telegraph(random.choice(Config.TELEGRAPH_ACCESS_TOKEN))
+    response = await telegraph.edit_page(
+        path=path,
+        title=title,
+        html_content=content,
+    )
+    return response['url']
+
 
 def remove_link(text):
     pattern = r'(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)'

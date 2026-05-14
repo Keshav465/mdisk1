@@ -11,3 +11,4 @@ aiofiles
 beautifulsoup4
 python-Levenshtein
 flask
+tmdbv3api

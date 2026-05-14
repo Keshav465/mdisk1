@@ -21,14 +21,31 @@ async def start(c: Bot, m: types.Message):
             _, file_id, chat_id = m.command[1].split("_")
 
             chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-            caption = chnl_msg.caption
-            caption = remove_mention(remove_link(caption))
-            btn = [[types.InlineKeyboardButton(
-                text="How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)]]
+            file = chnl_msg.video or chnl_msg.document or chnl_msg.audio
+            if not file:
+                return await m.reply("File not found or invalid media type.")
+            
+            file_name = getattr(file, 'file_name', 'No Name')
+            file_size = f"{round(file.file_size / (1024 * 1024), 1)} MB"
+            if file.file_size >= 1024 * 1024 * 1024:
+                file_size = f"{round(file.file_size / (1024 * 1024 * 1024), 1)} GB"
 
-            reply_markup = types.InlineKeyboardMarkup(
-                btn) if Config.FILE_HOW_TO_DOWNLOAD_LINK else None
-            await chnl_msg.copy(m.from_user.id, caption, reply_markup=reply_markup)
+            watch_url = f"{Config.BASE_URL}/watch/{chat_id}/{file_id}"
+            
+            btn = [
+                [
+                    types.InlineKeyboardButton("⚡ Fast Download", callback_data=f"download_{chat_id}_{file_id}"),
+                    types.InlineKeyboardButton("📺 Watch Online", url=watch_url)
+                ]
+            ]
+            
+            if Config.FILE_HOW_TO_DOWNLOAD_LINK:
+                btn.append([types.InlineKeyboardButton("How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)])
+
+            await m.reply_text(
+                f"<b>File Name:</b> <code>{file_name}</code>\n<b>Size:</b> <code>{file_size}</code>\n\nChoose an option below:",
+                reply_markup=types.InlineKeyboardMarkup(btn)
+            )
         return
         
     markup = types.InlineKeyboardMarkup(
