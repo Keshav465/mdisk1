@@ -1,3 +1,8 @@
+import asyncio
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 # Dummy Flask server for Render
 import os
 from flask import Flask
@@ -14,7 +19,7 @@ def run():
     app.run(host="0.0.0.0", port=port)
 
 # Start Flask in background
-threading.Thread(target=run).start()
+threading.Thread(target=run, daemon=True).start()
 
 # Now import and run the bot
 from bot import Bot
