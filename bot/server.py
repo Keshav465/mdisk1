@@ -4,7 +4,6 @@ import logging
 import asyncio
 from aiohttp import web
 from bot.config import Config
-from bot import Bot
 from pyrogram import types, enums
 
 # Set up logging
