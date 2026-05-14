@@ -3,7 +3,7 @@ import functools
 import re
 import random
 from pyrogram import enums, types, Client
-from bot import Bot
+from bot.bot import Bot
 from bot.config import Config, Script
 from bot.database import user_db, group_db
 from telegraph.aio import Telegraph
