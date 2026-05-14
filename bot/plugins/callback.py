@@ -97,15 +97,4 @@ async def delete_cmd_handler(bot, m: types.CallbackQuery):
     await m.message.delete()
     return
 
-@Client.on_callback_query(filters.regex("^download"))
-async def download_cb_handler(c: Client, m: types.CallbackQuery):
-    try:
-        _, chat_id, file_id = m.data.split("_")
-        chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-        
-        await m.answer("Sending file...", show_alert=False)
-        await chnl_msg.copy(m.from_user.id)
-        
-    except Exception as e:
-        print(f"Callback error: {e}")
-        await m.answer("Failed to send file. Please try again later.", show_alert=True)
+

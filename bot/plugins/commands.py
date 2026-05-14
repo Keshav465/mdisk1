@@ -25,27 +25,22 @@ async def start(c: Bot, m: types.Message):
             if not file:
                 return await m.reply("File not found or invalid media type.")
             
-            file_name = getattr(file, 'file_name', 'No Name')
-            file_size = f"{round(file.file_size / (1024 * 1024), 1)} MB"
-            if file.file_size >= 1024 * 1024 * 1024:
-                file_size = f"{round(file.file_size / (1024 * 1024 * 1024), 1)} GB"
-
             watch_url = f"{Config.BASE_URL}/watch/{chat_id}/{file_id}"
             
             btn = [
                 [
-                    types.InlineKeyboardButton("⚡ Fast Download", callback_data=f"download_{chat_id}_{file_id}"),
-                    types.InlineKeyboardButton("📺 Watch Online", url=watch_url)
+                    types.InlineKeyboardButton("📺 Watch Online", url=watch_url),
+                    types.InlineKeyboardButton("⚡ Fast Download", url=f"https://t.me/{c.username.replace('@', '')}?start=file_{file_id}_{chat_id}")
                 ]
             ]
             
             if Config.FILE_HOW_TO_DOWNLOAD_LINK:
                 btn.append([types.InlineKeyboardButton("How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)])
 
-            await m.reply_text(
-                f"<b>File Name:</b> <code>{file_name}</code>\n<b>Size:</b> <code>{file_size}</code>\n\nChoose an option below:",
-                reply_markup=types.InlineKeyboardMarkup(btn)
-            )
+            caption = chnl_msg.caption or ""
+            caption = remove_mention(remove_link(caption))
+            
+            await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))
         return
         
     markup = types.InlineKeyboardMarkup(
