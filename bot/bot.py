@@ -46,8 +46,22 @@ class Bot(Client):
 
     async def start(self):
         from bot.server import start_server
-        await super().start()
-        self.USER, self.USER_ID = await User(Config.SESSION_STRING, "user_bot").start()
+        import asyncio
+        from pyrogram.errors import FloodWait
+        
+        try:
+            await super().start()
+        except FloodWait as e:
+            logging.warning(f"FloodWait detected: Waiting {e.value} seconds before retrying...")
+            await asyncio.sleep(e.value)
+            await super().start()
+
+        try:
+            self.USER, self.USER_ID = await User(Config.SESSION_STRING, "user_bot").start()
+        except FloodWait as e:
+            logging.warning(f"UserBot FloodWait detected: Waiting {e.value} seconds before retrying...")
+            await asyncio.sleep(e.value)
+            self.USER, self.USER_ID = await User(Config.SESSION_STRING, "user_bot").start()
 
         if Config.UPDATE_CHANNEL:
             try:
