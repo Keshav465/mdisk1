@@ -5,6 +5,9 @@ from bot.utils import get_group_info_button, get_group_info_text, group_admin_ch
 from bot.database import group_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @Client.on_message(filters.command("start") & (filters.private | filters.group) & filters.incoming)
