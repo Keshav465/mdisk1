@@ -6,6 +6,7 @@ from bot.database import group_db
 from bot import Bot
 from pyrogram.errors.exceptions.bad_request_400 import ChannelInvalid
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
