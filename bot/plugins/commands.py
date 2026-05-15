@@ -18,27 +18,33 @@ async def start(c: Bot, m: types.Message):
             )
             return
         else:
-            _, file_id, chat_id = m.command[1].split("_")
-
             try:
+                parts = m.command[1].split("_")
+                if len(parts) == 2:
+                    file_id = parts[1]
+                    chat_id = Config.DATABASE_CHANNEL[0]
+                elif len(parts) == 3:
+                    file_id = parts[1]
+                    chat_id = parts[2]
+                else:
+                    return await m.reply("<b>⚠️ Invalid Link!</b>")
+
                 # Try fetching with Bot Token first
+                chnl_msg = None
                 try:
                     chnl_msg = await c.get_messages(int(chat_id), int(file_id))
                 except Exception:
                     # Fallback to UserBot if Bot Token lacks access
                     if c.USER:
-                        chnl_msg = await c.USER.get_messages(int(chat_id), int(file_id))
-                    else:
-                        raise
-
-                if not chnl_msg:
-                    return await m.reply("<b>⚠️ File not found or has been deleted from the database.</b>")
-                
-                # Ensure chnl_msg is a single message object
+                        try:
+                            chnl_msg = await c.USER.get_messages(int(chat_id), int(file_id))
+                        except Exception as user_e:
+                            logger.error(f"UserBot fetch error: {user_e}")
+                    
                 if isinstance(chnl_msg, list):
-                    chnl_msg = chnl_msg[0]
+                    chnl_msg = chnl_msg[0] if chnl_msg else None
 
-                if not (chnl_msg.video or chnl_msg.document or chnl_msg.audio):
+                if not chnl_msg or not (chnl_msg.video or chnl_msg.document or chnl_msg.audio):
                     return await m.reply("<b>⚠️ File not found or has been deleted from the database.</b>")
                 
                 file = chnl_msg.video or chnl_msg.document or chnl_msg.audio
@@ -63,9 +69,15 @@ async def start(c: Bot, m: types.Message):
                 caption = f"<b>📂 File:</b> <code>{file_name}</code>\n<b>⚖️ Size:</b> <code>{file_size}</code>"
                 caption = remove_mention(remove_link(caption))
                 
-                await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))
+                # Use send_cached_media to ensure the BOT sends the file
+                await c.send_cached_media(
+                    chat_id=m.from_user.id,
+                    file_id=file.file_id,
+                    caption=caption,
+                    reply_markup=types.InlineKeyboardMarkup(btn)
+                )
             except Exception as e:
-                print(f"File delivery error: {e}")
+                logger.error(f"File delivery error: {e}")
                 await m.reply(f"<b>❌ An error occurred:</b> <code>{e}</code>")
         return
         
