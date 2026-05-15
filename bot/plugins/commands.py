@@ -76,11 +76,34 @@ async def start(c: Bot, m: types.Message):
                 caption = remove_mention(remove_link(caption))
                 
                 # Deliver the file using the client that found it
-                await chnl_msg.copy(
-                    chat_id=m.from_user.id,
-                    caption=caption,
-                    reply_markup=types.InlineKeyboardMarkup(btn)
-                )
+                # If the UserBot found it, relay through LOG_CHANNEL so the BOT can send it
+                try:
+                    if chnl_msg._client != c and Config.LOG_CHANNEL:
+                        # Relay through Log Channel
+                        relay_msg = await chnl_msg.forward(Config.LOG_CHANNEL)
+                        await c.copy_message(
+                            chat_id=m.from_user.id,
+                            from_chat_id=Config.LOG_CHANNEL,
+                            message_id=relay_msg.id,
+                            caption=caption,
+                            reply_markup=types.InlineKeyboardMarkup(btn)
+                        )
+                        await relay_msg.delete()
+                    else:
+                        # Direct delivery (Bot has access or UserBot delivery as fallback)
+                        await chnl_msg.copy(
+                            chat_id=m.from_user.id,
+                            caption=caption,
+                            reply_markup=types.InlineKeyboardMarkup(btn)
+                        )
+                except Exception as delivery_e:
+                    logger.warning(f"Delivery error: {delivery_e}")
+                    # Final fallback: Try direct copy even if it's from UserBot
+                    await chnl_msg.copy(
+                        chat_id=m.from_user.id,
+                        caption=caption,
+                        reply_markup=types.InlineKeyboardMarkup(btn)
+                    )
             except Exception as e:
                 logger.error(f"File delivery error: {e}")
                 await m.reply(f"<b>❌ An error occurred:</b> <code>{e}</code>")
