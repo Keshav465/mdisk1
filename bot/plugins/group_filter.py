@@ -67,13 +67,11 @@ async def pm_filter(c, m: t.Message):
             await sts.edit("⚠️ Some error occurred while searching!")
             return
 
-        # 🌟 Movie Template (Premium Style)
+        # 🌟 Movie Template (Original Style)
         template = (
-            "<b>{i}. 🎬 {title}</b><br>"
-            "📂 <b>File:</b> <i>{title}</i><br>"
-            "⚖️ <b>Size:</b> <code>{size}</code><br>"
-            "👉 <a href='{link}'>DOWNLOAD / WATCH ONLINE 👈</a>"
-            "<br><br>"
+            "<b>{i}. 🍿 {title}</b><br>"
+            "👉 <a href='{link}'>Click Here To Download 👈</a> | "
+            "📦 {size}<br><br>"
         )
 
         bin_text = ""

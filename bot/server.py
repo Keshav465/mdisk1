@@ -292,17 +292,27 @@ async def watch_page(request):
 
 @routes.get("/stream/{chat_id}/{message_id}")
 async def stream_handler(request):
-    chat_id = int(request.match_info['chat_id'])
-    message_id = int(request.match_info['message_id'])
+    try:
+        chat_id = int(request.match_info['chat_id'])
+        message_id = int(request.match_info['message_id'])
+    except ValueError:
+        return web.Response(text="Invalid IDs provided", status=400)
     
     bot = request.app['bot']
     
     try:
+        # Try fetching from Bot first
         message = await bot.get_messages(chat_id, message_id)
-        if not message or not (message.video or message.document):
-            return web.Response(text="File not found", status=404)
+        if not message or not (message.video or message.document or message.audio):
+            # If bot can't see it, try USER bot
+            if bot.USER:
+                message = await bot.USER.get_messages(chat_id, message_id)
+            
+        if not message or not (message.video or message.document or message.audio):
+            logger.warning(f"File not found for {chat_id}/{message_id}")
+            return web.Response(text="File not found or access denied.", status=404)
         
-        file = message.video or message.document
+        file = message.video or message.document or message.audio
         file_size = file.file_size
         file_name = getattr(file, 'file_name', 'video.mp4')
         mime_type = getattr(file, 'mime_type', 'video/mp4')
@@ -315,7 +325,7 @@ async def stream_handler(request):
             # Handle Range request for seeking
             ranges = range_header.replace('bytes=', '').split('-')
             start = int(ranges[0])
-            if ranges[1]:
+            if len(ranges) > 1 and ranges[1]:
                 end = int(ranges[1])
         
         content_length = end - start + 1
@@ -341,8 +351,8 @@ async def stream_handler(request):
         return response
         
     except Exception as e:
-        logger.error(f"Stream error: {e}")
-        return web.Response(text=str(e), status=500)
+        logger.error(f"Stream error for {chat_id}/{message_id}: {e}")
+        return web.Response(text=f"Server Error: {str(e)}", status=500)
 
 async def start_server(bot):
     app = web.Application()
