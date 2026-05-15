@@ -21,7 +21,16 @@ async def start(c: Bot, m: types.Message):
             _, file_id, chat_id = m.command[1].split("_")
 
             try:
-                chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                # Try fetching with Bot Token first
+                try:
+                    chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                except Exception:
+                    # Fallback to UserBot if Bot Token lacks access
+                    if c.USER:
+                        chnl_msg = await c.USER.get_messages(int(chat_id), int(file_id))
+                    else:
+                        raise
+
                 if not chnl_msg or not (chnl_msg.video or chnl_msg.document or chnl_msg.audio):
                     return await m.reply("<b>⚠️ File not found or has been deleted from the database.</b>")
                 
