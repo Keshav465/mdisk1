@@ -44,7 +44,7 @@ async def start(c: Bot, m: types.Message):
                 if Config.FILE_HOW_TO_DOWNLOAD_LINK:
                     btn.append([types.InlineKeyboardButton("📖 How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)])
 
-                caption = f"<b>📂 File:</b> <code>{file_name}</code>\n<b>⚖️ Size:</b> <code>{file_size}</code>\n\n{chnl_msg.caption or ''}"
+                caption = f"<b>📂 File:</b> <code>{file_name}</code>\n<b>⚖️ Size:</b> <code>{file_size}</code>"
                 caption = remove_mention(remove_link(caption))
                 
                 await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))

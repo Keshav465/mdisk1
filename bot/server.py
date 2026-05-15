@@ -89,19 +89,16 @@ async def watch_page(request):
                 to {{ opacity: 1; transform: scale(1); }}
             }}
             
-            .timer-circle {{
-                width: 100px;
-                height: 100px;
-                border-radius: 50%;
-                border: 5px solid var(--primary);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 2.5rem;
-                font-weight: 800;
-                margin: 0 auto 30px;
-                color: var(--primary);
-                box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
+            .status-icon {{
+                font-size: 3rem;
+                margin-bottom: 20px;
+                animation: pulse 2s infinite;
+            }}
+            
+            @keyframes pulse {{
+                0% {{ transform: scale(1); opacity: 1; }}
+                50% {{ transform: scale(1.1); opacity: 0.7; }}
+                100% {{ transform: scale(1); opacity: 1; }}
             }}
             
             h1 {{
@@ -162,46 +159,36 @@ async def watch_page(request):
     </head>
     <body>
         <div class="container">
-            <div class="timer-circle" id="timer">3</div>
-            <h1>Preparing Stream</h1>
+            <div class="status-icon">🎬</div>
+            <h1>Opening Video...</h1>
             <div class="file-info">
                 <strong>{file_name}</strong><br>
                 Size: {file_size}
             </div>
             <div class="instruction">
-                For the best experience, stream this video in <b>mpvEx Player</b>.
-                <span class="hindi-text">इस ऐप को डाउनलोड करके इसमें स्ट्रीम कर सकते हो।</span>
+                If the video doesn't play automatically, please install <b>mpvEx Player</b>.
+                <span class="hindi-text">अगर वीडियो प्ले न हो तो mpvEx Player इंस्टॉल करें और इसमें प्ले करें।</span>
             </div>
             
-            <a href="{intent_url}" class="btn btn-primary" id="streamBtn">🚀 OPEN IN MPVEX PLAYER</a>
+            <a href="{intent_url}" class="btn btn-primary" id="streamBtn">🚀 MANUAL OPEN PLAYER</a>
             <a href="{play_store_url}" class="btn btn-secondary">📥 DOWNLOAD FROM PLAY STORE</a>
         </div>
 
         <script>
-            let timeLeft = 3;
-            const timerElement = document.getElementById('timer');
-            const streamBtn = document.getElementById('streamBtn');
             const intentUrl = "{intent_url}";
             const playStoreUrl = "{play_store_url}";
 
-            const countdown = setInterval(() => {{
-                timeLeft--;
-                timerElement.innerText = timeLeft;
-                if (timeLeft <= 0) {{
-                    clearInterval(countdown);
-                    timerElement.innerText = "✓";
-                    // Attempt to open the app
-                    window.location.href = intentUrl;
-                    
-                    // Fallback to Play Store if the app doesn't open after 2 seconds
-                    setTimeout(() => {{
-                        // Check if the user is still on this page
-                        if (!document.hidden) {{
-                            window.location.href = playStoreUrl;
-                        }}
-                    }}, 2500);
-                }}
-            }}, 1000);
+            // Auto-redirect immediately after a tiny delay to ensure page rendering
+            setTimeout(() => {{
+                window.location.href = intentUrl;
+                
+                // Fallback to Play Store if the app doesn't open
+                setTimeout(() => {{
+                    if (!document.hidden) {{
+                        window.location.href = playStoreUrl;
+                    }}
+                }}, 2000);
+            }}, 100);
         </script>
     </body>
     </html>
