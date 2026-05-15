@@ -72,10 +72,9 @@ async def start(c: Bot, m: types.Message):
                 caption = f"<b>📂 File:</b> <code>{file_name}</code>\n<b>⚖️ Size:</b> <code>{file_size}</code>"
                 caption = remove_mention(remove_link(caption))
                 
-                # Use send_cached_media to ensure the BOT sends the file
-                await c.send_cached_media(
+                # Use copy() to ensure the correct client (Bot or User) is used for delivery
+                await chnl_msg.copy(
                     chat_id=m.from_user.id,
-                    file_id=file.file_id,
                     caption=caption,
                     reply_markup=types.InlineKeyboardMarkup(btn)
                 )
