@@ -31,7 +31,14 @@ async def start(c: Bot, m: types.Message):
                     else:
                         raise
 
-                if not chnl_msg or not (chnl_msg.video or chnl_msg.document or chnl_msg.audio):
+                if not chnl_msg:
+                    return await m.reply("<b>⚠️ File not found or has been deleted from the database.</b>")
+                
+                # Ensure chnl_msg is a single message object
+                if isinstance(chnl_msg, list):
+                    chnl_msg = chnl_msg[0]
+
+                if not (chnl_msg.video or chnl_msg.document or chnl_msg.audio):
                     return await m.reply("<b>⚠️ File not found or has been deleted from the database.</b>")
                 
                 file = chnl_msg.video or chnl_msg.document or chnl_msg.audio
