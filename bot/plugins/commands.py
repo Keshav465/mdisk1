@@ -20,27 +20,37 @@ async def start(c: Bot, m: types.Message):
         else:
             _, file_id, chat_id = m.command[1].split("_")
 
-            chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-            file = chnl_msg.video or chnl_msg.document or chnl_msg.audio
-            if not file:
-                return await m.reply("File not found or invalid media type.")
-            
-            watch_url = f"{Config.BASE_URL}/watch/{chat_id}/{file_id}"
-            
-            btn = [
-                [
-                    types.InlineKeyboardButton("📺 Watch Online", url=watch_url),
-                    types.InlineKeyboardButton("⚡ Fast Download", url=f"https://t.me/{c.username.replace('@', '')}?start=file_{file_id}_{chat_id}")
-                ]
-            ]
-            
-            if Config.FILE_HOW_TO_DOWNLOAD_LINK:
-                btn.append([types.InlineKeyboardButton("How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)])
+            try:
+                chnl_msg = await c.get_messages(int(chat_id), int(file_id))
+                if not chnl_msg or not (chnl_msg.video or chnl_msg.document or chnl_msg.audio):
+                    return await m.reply("<b>⚠️ File not found or has been deleted from the database.</b>")
+                
+                file = chnl_msg.video or chnl_msg.document or chnl_msg.audio
+                file_name = getattr(file, "file_name", "File")
+                file_size = f"{round(file.file_size / (1024 * 1024), 2)} MB"
+                if file.file_size >= 1024 * 1024 * 1024:
+                    file_size = f"{round(file.file_size / (1024 * 1024 * 1024), 2)} GB"
 
-            caption = chnl_msg.caption or ""
-            caption = remove_mention(remove_link(caption))
-            
-            await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))
+                watch_url = f"{Config.BASE_URL}/watch/{chat_id}/{file_id}"
+                download_url = f"{Config.BASE_URL}/stream/{chat_id}/{file_id}"
+                
+                btn = [
+                    [
+                        types.InlineKeyboardButton("📺 Watch Online", url=watch_url),
+                        types.InlineKeyboardButton("⚡ Fast Download", url=download_url)
+                    ]
+                ]
+                
+                if Config.FILE_HOW_TO_DOWNLOAD_LINK:
+                    btn.append([types.InlineKeyboardButton("📖 How to Download?", url=Config.FILE_HOW_TO_DOWNLOAD_LINK)])
+
+                caption = f"<b>📂 File:</b> <code>{file_name}</code>\n<b>⚖️ Size:</b> <code>{file_size}</code>\n\n{chnl_msg.caption or ''}"
+                caption = remove_mention(remove_link(caption))
+                
+                await chnl_msg.copy(m.from_user.id, caption=caption, reply_markup=types.InlineKeyboardMarkup(btn))
+            except Exception as e:
+                print(f"File delivery error: {e}")
+                await m.reply(f"<b>❌ An error occurred:</b> <code>{e}</code>")
         return
         
     markup = types.InlineKeyboardMarkup(

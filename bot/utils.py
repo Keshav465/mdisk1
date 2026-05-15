@@ -31,22 +31,52 @@ INTERVALS = OrderedDict([
 
 
 async def filter_chat(c: Bot, query, chat_id_list=Config.DATABASE_CHANNEL, offset=0, filter: enums.MessagesFilter = enums.MessagesFilter.EMPTY, num_results=Config.LIMIT):
-    search_results = []
-    raw_search_results = []
-    query_list = query.split()
     results = []
+    
+    # Pre-clean query
+    clean_query = query.strip()
+    if not clean_query:
+        return []
 
-    for q in query_list:
-        for chat_id in chat_id_list:
-            async for message in c.USER.search_messages(chat_id, query=q, offset=offset, filter=filter, limit=Config.LIMIT):
+    # Helper function for searching in a single channel
+    async def search_in_channel(chat_id):
+        chan_results = []
+        try:
+            async for message in c.USER.search_messages(chat_id, query=clean_query, offset=offset, filter=filter, limit=num_results):
                 if message.text or message.caption:
                     text = message.text or message.caption
                     file_name = text.splitlines()[0].lower()
-                    ratio = fuzz.token_set_ratio(query, file_name)
-                    results.append((message, ratio))
+                    ratio = fuzz.token_set_ratio(clean_query.lower(), file_name)
+                    chan_results.append((message, ratio))
+        except Exception as e:
+            print(f"Error searching in {chat_id}: {e}")
+        return chan_results
+
+    # Run searches in parallel
+    tasks = [search_in_channel(cid) for cid in chat_id_list]
+    all_chan_results = await asyncio.gather(*tasks)
     
-    results.sort(key=lambda x: x[1], reverse=True)
-    return [r[0] for r in results[:num_results]]
+    for chan_results in all_chan_results:
+        results.extend(chan_results)
+    
+    # If no results found with full query, try individual words (limited)
+    if not results and " " in clean_query:
+        query_list = clean_query.split()
+        for q in query_list[:2]: # Only first 2 words to keep it snappy
+            tasks = [search_in_channel(cid) for cid in chat_id_list]
+            all_chan_results = await asyncio.gather(*tasks)
+            for chan_results in all_chan_results:
+                results.extend(chan_results)
+
+    # Sort results by ratio and remove duplicates
+    seen_ids = set()
+    unique_results = []
+    for msg, ratio in sorted(results, key=lambda x: x[1], reverse=True):
+        if msg.id not in seen_ids:
+            unique_results.append((msg, ratio))
+            seen_ids.add(msg.id)
+
+    return [r[0] for r in unique_results[:num_results]]
 
 
 async def add_new_user(c, user_id, mention):
