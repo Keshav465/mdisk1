@@ -35,14 +35,19 @@ async def start(c: Bot, m: types.Message):
                 # Try fetching with Bot Token first
                 chnl_msg = None
                 try:
+                    # Prime the bot with the chat to avoid PeerIdInvalid
+                    await c.get_chat(int(chat_id))
                     chnl_msg = await c.get_messages(int(chat_id), int(file_id))
-                except Exception:
+                except Exception as bot_e:
+                    logger.warning(f"Bot Token fetch failed for {chat_id}: {bot_e}")
                     # Fallback to UserBot if Bot Token lacks access
                     if c.USER:
                         try:
+                            # Prime the UserBot too
+                            await c.USER.get_chat(int(chat_id))
                             chnl_msg = await c.USER.get_messages(int(chat_id), int(file_id))
                         except Exception as user_e:
-                            logger.error(f"UserBot fetch error: {user_e}")
+                            logger.error(f"UserBot fetch error for {chat_id}: {user_e}")
                     
                 if isinstance(chnl_msg, list):
                     chnl_msg = chnl_msg[0] if chnl_msg else None
